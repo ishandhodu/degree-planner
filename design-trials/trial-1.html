@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design trial 1 — ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FDFCF7;
+    --band: #E3EDE0;
+    --ink: #1F2E27;
+    --forest: #3D6B52;
+    --mustard: #B98B2A;
+    --brick: #A1402C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Spectral', serif;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+  }
+  h1 {
+    font-weight: 600;
+    font-size: 1.75rem;
+    margin: 0 0 2rem;
+  }
+  .semester {
+    border-top: 1px solid var(--ink);
+    padding: 1rem 0;
+  }
+  .semester:last-child {
+    border-bottom: 1px solid var(--ink);
+  }
+  .semester-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9rem;
+  }
+  .semester-head .label {
+    font-family: 'Spectral', serif;
+    font-size: 1.1rem;
+    font-weight: 500;
+  }
+  .bar-track {
+    height: 10px;
+    background: var(--band);
+    margin: 0.6rem 0 0.8rem;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--forest);
+  }
+  .bar-fill.warn { background: var(--mustard); }
+  .bar-fill.over { background: var(--brick); }
+  .items {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.875rem;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .items li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.2rem 0;
+  }
+  .items li::before {
+    content: "·";
+    margin-right: 0.5rem;
+  }
+  .flag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--forest);
+  }
+</style>
+</head>
+<body>
+  <h1>Degree Planner — trial component</h1>
+
+  <div class="semester">
+    <div class="semester-head">
+      <span class="label">Fall 2026</span>
+      <span>5 / 7</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width: 71%"></div></div>
+    <ul class="items">
+      <li><span>ORG-200 Org Behavior</span><span>diff 3</span></li>
+      <li><span>QTM-110 Quant Methods</span><span>diff 2</span></li>
+    </ul>
+  </div>
+
+  <div class="semester">
+    <div class="semester-head">
+      <span class="label">Spring 2027 <span class="flag">— study abroad</span></span>
+      <span>3 / 3</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill warn" style="width: 100%"></div></div>
+    <ul class="items">
+      <li><span>HUM-150 Ethics</span><span>diff 3</span></li>
+    </ul>
+  </div>
+
+  <div class="semester">
+    <div class="semester-head">
+      <span class="label">Fall 2027</span>
+      <span>8 / 7</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill over" style="width: 100%"></div></div>
+    <ul class="items">
+      <li><span>FIN-305 Corp Finance</span><span>diff 5</span></li>
+      <li><span>STAT-220 Statistics</span><span>diff 3</span></li>
+    </ul>
+  </div>
+</body>
+</html>
