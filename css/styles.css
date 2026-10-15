@@ -5,8 +5,8 @@
   --forest: #3D6B52;
   --mustard: #B98B2A;
   --brick: #A1402C;
-  --font-serif: 'Spectral', serif;
-  --font-mono: 'IBM Plex Mono', monospace;
+  --font-serif: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+  --font-mono: ui-monospace, SF Mono, Cascadia Code, Consolas, Menlo, monospace;
 }
 
 * {

@@ -19,14 +19,16 @@ A degree-audit ledger. Workday shows what's done; this tool shows what's left an
 
 ## Type
 
-- **Spectral** (serif) — headings, instructions, body prose. This is the tool explaining itself to you.
-- **IBM Plex Mono** (monospace) — anything that's a number or needs to line up like a ledger: difficulty points, semester budgets ("5 / 7"), requirement codes. Tabular figures throughout so columns of numbers actually align.
+- **A system serif** (`Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif`) — headings, instructions, body prose. This is the tool explaining itself to you.
+- **A system monospace** (`ui-monospace, SF Mono, Cascadia Code, Consolas, Menlo, monospace`) — anything that's a number or needs to line up like a ledger: difficulty points, semester budgets ("5 / 7"), requirement codes. Tabular figures throughout so columns of numbers actually align.
+
+Originally Spectral/IBM Plex Mono from Google Fonts; switched to native system font stacks since the brief for this project bans loading anything from a CDN, which a Google Fonts `<link>` arguably counts as. No visible request to an outside host anywhere in the page now.
 
 Two typefaces, each doing one job — never mixed within the same line of text.
 
 ## Layout
 
-Single column, left-aligned, max width ~640px. Hairline (1px, `--ink`) rules separate semesters — no cards, no shadows, no border-radius anywhere. The ruling does the work a card border would, but it reads as a ledger, not a UI kit.
+Single column, left-aligned, max width ~640px for the landing and plan screens. Hairline (1px, `--ink`) rules separate semesters — no cards, no shadows, no border-radius anywhere in the ledger itself. The ruling does the work a card border would, but it reads as a ledger, not a UI kit.
 
 ```
 Fall 2026 ───────────────────────────── 5 / 7
@@ -36,21 +38,27 @@ Fall 2026 ───────────────────────�
 ──────────────────────────────────────────
 ```
 
-The requirement checklist (mark-completed) and the setup form (remaining semesters, abroad/gap flags, model dropdown) sit above the plan as their own ledger sections, same ruling style, before any plan is generated.
+**The wizard is its own narrower column (~480px), bordered as one panel** — a deliberate exception to "no cards." User testing on the first version (one flat scrolling page) found it read as bland and not "a professional tool's sign-up flow"; a bounded step panel with a progress bar above it, one question at a time, reads as guided rather than as a form dumped on the page. The ledger itself (landing hero sample, final plan) keeps the flatter, card-free treatment.
 
 ## States
 
-- **Empty:** the checklist and setup form are visible and interactive; the plan area shows one line of Spectral prose: "Mark what you've completed and set up your remaining semesters, then generate your plan." No bars, no ledger rows yet — there's nothing to balance yet.
-- **Invalid input:** a line of brick-red (`#A1402C`) Plex Mono text appears directly under the offending field (e.g., under the remaining-semesters input: "Enter at least 1 remaining semester"). The field itself gets a brick-red bottom border. Nothing else on the page changes; the rest of the form stays exactly as it was.
-- **In use:** the semester ledger from the trial — each semester a hairline-ruled band with its label, any flag, a budget bar (forest/mustard/brick depending on fill), and its assigned requirements in Plex Mono. A "Couldn't be scheduled" section, same ruling style, in brick, appears below the ledger only if something didn't fit.
-- **After reset:** everything returns to the Empty state's exact appearance — no transition needed, since Reset is a deliberate full return, not a partial change.
+- **Landing:** headline, one paragraph of explanation, a static sample ledger row (same visual language as the real plan, non-interactive), and a "Build my plan" button.
+- **Wizard, empty/in progress:** one question per screen inside the bordered panel, with a progress bar (`Step N of M`) above it. Step content fades/slides in on each change (~250ms, skipped under `prefers-reduced-motion`).
+- **Invalid input:** a line of brick-red (`#A1402C`) system-mono text appears directly under the offending field (e.g., under the remaining-semesters input: "Enter 0 or more remaining semesters"). The field itself gets a brick-red border. The wizard won't advance until it's fixed.
+- **Plan generated:** the ledger — current semester named first (no item list, no bar, since it isn't scheduled), then each future semester as a hairline-ruled band with its label, any flag, a budget bar (forest/mustard/brick depending on fill), and its assigned requirements in mono. A "Couldn't be scheduled" section, same ruling style, in brick, appears below only if something didn't fit.
+- **After reset:** returns to the landing screen exactly as a first visit — no transition needed, since "Start over" is a deliberate full return, not a partial change.
 
 ## Motion
 
-One deliberate moment: when "Generate Plan" runs, each budget bar fills from 0 to its computed width in a single ~400ms pass (CSS transition on `width`), staggered slightly semester-to-semester (fall first, then the next, etc.) so the ledger visibly "fills in." Nothing else animates — no hover transitions on rows, no fade-ins on load. Respects `prefers-reduced-motion` (bars jump straight to final width, no transition).
+Two deliberate moments, both skipped under `prefers-reduced-motion`:
+
+1. When "Generate my plan" runs, each budget bar fills from 0 to its computed width in a single ~400ms pass (CSS transition on `width`), staggered slightly semester-to-semester so the ledger visibly "fills in."
+2. Each wizard step fades and slides in slightly (~250ms) when it appears, so moving through the questions feels like progressing, not like the page just changing.
+
+Nothing else animates — no hover transitions on static content, no decorative fade-ins.
 
 ## Accessibility
 
 - Text contrast: ink (`#1F2E27`) on paper (`#FDFCF7`) and band (`#E3EDE0`) both clear AA for body text.
-- Every interactive element (checkbox, input, dropdown, button) gets a visible focus outline in forest green, not just a browser default.
+- Every interactive element (checkbox, input, toggle button, radio card, button) gets a visible focus outline in forest green, not just a browser default. Each wizard step autofocuses its first field, and pressing Enter in a field advances to the next question, for a keyboard-first flow.
 - Budget-bar color is never the only signal — the "x / y" number is always shown alongside the bar, so color-blind users aren't relying on forest/mustard/brick alone.
