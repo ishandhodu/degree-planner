@@ -9,7 +9,7 @@ Built from `PROPOSAL.md` → `PRD.md` → `DESIGN.md` → `AGENTS.md`, as a land
 ## How to use it
 
 1. From the landing page, click **Build my plan**.
-2. Check off any core requirement you've already taken or are currently taking.
+2. For each core requirement, check **Taken** if you've completed it, or **Taking now** if you're enrolled in it this semester.
 3. Enter your current year and term, and how many semesters you have left after this one.
 4. On the semester list, flag any semester that's unusual — study abroad or a gap semester — with a quick three-way toggle. Leave the rest as Normal.
 5. Pick a scheduling model from the four description cards (each explains what it actually does before you choose).
@@ -29,5 +29,5 @@ I only caught the problem by actually clicking through the wizard with 6+ semest
 ## Notes
 
 - Difficulty ratings are one decimal place (e.g. 4.7), not whole 1–5 integers as originally planned in `PROPOSAL.md` — the real course-rating portal data came back with decimals, so the tool kept that precision instead of rounding it away.
-- The requirement checklist was originally a three-state control (not started / in progress / completed) so the current semester's plan could show specific in-progress courses. User testing showed the three-way choice was more confusing than useful for a 20-item list, so it's now a single checkbox (taken/taking vs. not) — the trade-off is the current-semester line in the plan is now just a label, not a specific course list.
+- The requirement checklist went through two shapes: a three-state control (not started / in progress / completed), simplified to one combined "taken or taking" checkbox when that felt like overkill for a 20-item list, then split back into two checkboxes ("Taken" / "Taking now") once the plan screen needed to actually list what's in progress this term on the current semester's card, rather than just naming the semester.
 - The "AI recommends a model" behavior is a plain JavaScript rule (study-abroad flagged → suggest Model D, otherwise Model A), not a live model call — the assignment requires no outside API calls, so there's no real AI involved in that suggestion.

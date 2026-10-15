@@ -423,12 +423,28 @@ input[type="number"].invalid {
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 0;
+}
+
+#requirement-checklist .status-group {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+#requirement-checklist .status-check {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--forest);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 #requirement-checklist input[type="checkbox"] {
-  width: 1.15rem;
-  height: 1.15rem;
+  width: 1.1rem;
+  height: 1.1rem;
   accent-color: var(--forest);
   flex-shrink: 0;
   cursor: pointer;
@@ -531,6 +547,10 @@ body.plan-active > footer {
   flex-direction: column;
   height: 100%;
   min-height: 0;
+}
+
+#screen-plan[hidden] {
+  display: none;
 }
 
 .plan-header {
@@ -997,5 +1017,13 @@ body.plan-active > footer {
 
   .wizard-card {
     padding: 1.5rem 1.25rem;
+  }
+
+  #requirement-checklist .checklist-row {
+    flex-wrap: wrap;
+  }
+
+  #requirement-checklist .req-difficulty {
+    margin-left: auto;
   }
 }

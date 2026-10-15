@@ -55,7 +55,8 @@ const MAX_PER_SEMESTER = 2;
 
 function defaultState() {
   return {
-    doneIds: [],
+    takenIds: [],
+    inProgressIds: [],
     currentYearIndex: 0,
     currentTerm: 'fall',
     futureSemesterCount: null,
@@ -73,8 +74,12 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function isDone(id) {
-  return state.doneIds.includes(id);
+function isTaken(id) {
+  return state.takenIds.includes(id);
+}
+
+function isInProgress(id) {
+  return state.inProgressIds.includes(id);
 }
 
 let state = loadState();
@@ -193,24 +198,55 @@ let currentIndex = 0;
 function renderChecklistInto(ul) {
   ul.innerHTML = '';
   CORE_REQUIREMENTS.forEach((req) => {
-    const done = isDone(req.id);
+    const taken = isTaken(req.id);
+    const inProgress = isInProgress(req.id);
 
     const item = document.createElement('li');
-    item.className = done ? 'done' : '';
+    item.className = taken ? 'done' : '';
 
-    const row = document.createElement('label');
+    const row = document.createElement('div');
     row.className = 'checklist-row';
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = done;
-    checkbox.addEventListener('change', () => {
-      state.doneIds = checkbox.checked
-        ? [...new Set([...state.doneIds, req.id])]
-        : state.doneIds.filter((id) => id !== req.id);
+    const statusGroup = document.createElement('div');
+    statusGroup.className = 'status-group';
+
+    const takenLabel = document.createElement('label');
+    takenLabel.className = 'status-check';
+    const takenBox = document.createElement('input');
+    takenBox.type = 'checkbox';
+    takenBox.checked = taken;
+    takenLabel.append(takenBox, document.createTextNode('Taken'));
+
+    const progressLabel = document.createElement('label');
+    progressLabel.className = 'status-check';
+    const progressBox = document.createElement('input');
+    progressBox.type = 'checkbox';
+    progressBox.checked = inProgress;
+    progressLabel.append(progressBox, document.createTextNode('Taking now'));
+
+    takenBox.addEventListener('change', () => {
+      if (takenBox.checked) {
+        state.takenIds = [...new Set([...state.takenIds, req.id])];
+        state.inProgressIds = state.inProgressIds.filter((id) => id !== req.id);
+      } else {
+        state.takenIds = state.takenIds.filter((id) => id !== req.id);
+      }
       saveState();
       renderChecklistInto(ul);
     });
+
+    progressBox.addEventListener('change', () => {
+      if (progressBox.checked) {
+        state.inProgressIds = [...new Set([...state.inProgressIds, req.id])];
+        state.takenIds = state.takenIds.filter((id) => id !== req.id);
+      } else {
+        state.inProgressIds = state.inProgressIds.filter((id) => id !== req.id);
+      }
+      saveState();
+      renderChecklistInto(ul);
+    });
+
+    statusGroup.append(takenLabel, progressLabel);
 
     const name = document.createElement('span');
     name.className = 'req-name';
@@ -220,7 +256,7 @@ function renderChecklistInto(ul) {
     difficulty.className = 'req-difficulty';
     difficulty.textContent = `diff ${req.difficulty.toFixed(1)}`;
 
-    row.append(checkbox, name, difficulty);
+    row.append(statusGroup, name, difficulty);
     item.appendChild(row);
     ul.appendChild(item);
   });
@@ -229,7 +265,7 @@ function renderChecklistInto(ul) {
 const checklistStep = {
   id: 'checklist',
   render(container) {
-    container.innerHTML = '<p class="step-question">Which core requirements have you already taken or are currently taking?</p><p class="step-subtext">Check a box if you\'ve taken it or are taking it now. Leave it unchecked if it\'s still ahead of you.</p><ul id="requirement-checklist"></ul>';
+    container.innerHTML = '<p class="step-question">Which core requirements have you already taken, or are you currently taking?</p><p class="step-subtext">Check "Taken" if you\'ve completed it, or "Taking now" if you\'re enrolled in it this semester. Leave both unchecked if it\'s still ahead of you.</p><ul id="requirement-checklist"></ul>';
     renderChecklistInto(document.getElementById('requirement-checklist'));
   },
   onNext() {
@@ -823,11 +859,12 @@ function renderPlanTimeline(plan) {
   spineFill.className = 'plan-spine-fill';
   planTrack.append(spineBg, spineFill);
 
+  const inProgressReqs = CORE_REQUIREMENTS.filter((r) => isInProgress(r.id));
   const currentEntry = {
     sem: { yearIndex: state.currentYearIndex, term: state.currentTerm, flag: 'current' },
     cap: 0,
-    items: [],
-    total: 0,
+    items: inProgressReqs,
+    total: inProgressReqs.reduce((sum, r) => sum + r.difficulty, 0),
   };
 
   const entries = [
@@ -862,7 +899,7 @@ function renderPlanTimeline(plan) {
 }
 
 function generateAndShowPlan() {
-  const remaining = CORE_REQUIREMENTS.filter((r) => !isDone(r.id));
+  const remaining = CORE_REQUIREMENTS.filter((r) => !isTaken(r.id) && !isInProgress(r.id));
   const semesters = buildFutureSemesters(state.futureSemesterCount, state.currentYearIndex, state.currentTerm, state.flags);
 
   const plan =

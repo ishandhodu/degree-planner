@@ -35,14 +35,14 @@ Difficulty is 1–5 (one decimal place, matching the real portal data — e.g. 4
 
 **State (JS variables, saved to `localStorage`):**
 
-- `doneIds`: array of requirement IDs the student has checked — taken or currently taking, either way excluded from scheduling. (Originally a three-state status distinguishing "in progress" from "completed"; simplified to a single checkbox per the required-question commit below — a three-way control tested as more confusing than useful for a 20-item list.)
+- `takenIds` / `inProgressIds`: two arrays of requirement IDs — completed, and currently enrolled — both excluded from scheduling. (Originally one combined `doneIds` checkbox, since a three-way control first tested as more confusing than useful for a 20-item list; split back into two checkboxes — "Taken" / "Taking now" — once the plan screen needed to actually list what's in progress this term, not just name the semester.)
 - `currentYearIndex` / `currentTerm`: the student's current class year (0 = Freshman … 3 = Senior) and term (`"fall"` | `"spring"`), used to compute every semester label going forward.
 - `futureSemesterCount`: how many semesters remain **after** the current one.
 - `flags`: per-future-semester array of `"normal"` | `"abroad"` | `"gap"`.
 - `selectedModel`: one of `"A"`, `"B"`, `"C"`, `"D"`.
 - `plan`: the generated output — which requirement is assigned to which future semester, and any requirement that couldn't be placed.
 
-**The current semester is shown, not scheduled.** The plan always opens with a line naming the current semester and noting that planning starts the semester after it — but it no longer lists specific in-progress courses there, since a single checkbox can't distinguish "taken last year" from "taking this very term." Only requirements with `doneIds` excluded are handed to `generatePlan`, and only into the semesters after the current one.
+**The current semester is shown, not scheduled.** The plan opens with the current semester's card listing whatever's in `inProgressIds` (up to 4), with no cap or budget bar since it isn't something `generatePlan` assigned. Only requirements in neither `takenIds` nor `inProgressIds` are handed to `generatePlan`, and only into the semesters after the current one.
 
 ## Scheduling logic
 
@@ -80,14 +80,14 @@ The tool is three screens, not one scrolling form:
 - **Empty:** Landing page, before "Build my plan" is clicked.
 - **Invalid input:** Triggered by: future-semester count that's negative, blank, or not a whole number; or every requirement already checked (nothing left to schedule). Message appears inline directly under the field, and the wizard won't advance past it until it's fixed.
 - **In use:** The wizard steps themselves, each holding its own state until "Generate my plan" is clicked.
-- **Plan generated:** The current semester is named first (no item list, no cap — see above), then each future semester with its flag, assigned requirements, and a running difficulty total against its cap, animated filling in. A "Couldn't be scheduled" section lists anything left over.
+- **Plan generated:** The current semester's card is first, listing whatever's in progress this term (no cap — see above), then each future semester with its flag, assigned requirements, and a running difficulty total against its cap, animated filling in. A trailing "Couldn't be scheduled" card lists anything left over.
 - **After a reset:** "Start over" clears all state back to defaults and returns to the landing page, without a page reload.
 
 **Default model suggestion (rule-based, not live AI):** if the student flags any semester as study-abroad, default the model choice to D; otherwise default to A. The student can always pick a different card.
 
 ## Functional requirements
 
-- State held in JS (`doneIds`, current year/term, `futureSemesterCount`, `flags`, `selectedModel`, `plan`), read and changed by more than one interaction.
+- State held in JS (`takenIds`, `inProgressIds`, current year/term, `futureSemesterCount`, `flags`, `selectedModel`, `plan`), read and changed by more than one interaction.
 - Output worked out from that state (the generated plan, per-semester difficulty totals, unscheduled flags) — not an echo of input.
 - At least three kinds of interaction: checkboxes (requirement list), number input + dropdowns (setup), toggle buttons (per-semester flags), radio cards (model), and buttons (Next/Back, Generate, Reset).
 - Page updates itself on every change — no `alert()`.
