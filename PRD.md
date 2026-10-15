@@ -40,7 +40,7 @@ Difficulty is 1–5 (one decimal place, matching the real portal data — e.g. 4
 - `futureSemesterCount`: how many semesters remain **after** the current one.
 - `flags`: per-future-semester array of `"normal"` | `"abroad"` | `"gap"`.
 - `selectedModel`: one of `"A"`, `"B"`, `"C"`, `"D"`.
-- `plan`: the generated output — which requirement is assigned to which future semester, and any requirement that couldn't be placed.
+- `plan`: the generated output — which requirement is assigned to which future semester, and which of those (if any) pushed their semester over budget.
 
 **The current semester is shown, not scheduled.** The plan opens with the current semester's card listing whatever's in `inProgressIds` (up to 4), with no cap or budget bar since it isn't something `generatePlan` assigned. Only requirements in neither `takenIds` nor `inProgressIds` are handed to `generatePlan`, and only into the semesters after the current one.
 
@@ -55,13 +55,9 @@ One function, `generatePlan(requirements, semesters, model)`, used for all four 
 | C — Ramp down | 8 (first half) → 4 (second half) | 4 | 4 |
 | D — Protect specific semesters | 7 | 3 | 3 |
 
-Max 2 core requirements assigned per semester regardless of model, so there's still room for electives and major courses.
-
 **Assignment order:** before assigning, sort unassigned requirements by how many of the remaining semesters they could even go in (fewest valid semesters first — a fall-only requirement with one fall semester left is more urgent than a both-semesters requirement). Ties break by difficulty, highest first, so the hardest of equally-constrained requirements gets placed while there's still room.
 
-For each semester in order, fill it with requirements from the sorted list that (a) are offered in that semester's type, and (b) keep the semester's running difficulty total at or under its cap, until either the cap or the 2-course max is hit.
-
-Anything left unassigned after all semesters are filled is flagged in the output as "couldn't be scheduled as configured."
+**Every requirement is placed somewhere — there is no "couldn't be scheduled" list.** For each requirement in that order, it goes into whichever eligible semester (matching its offered type, not a gap semester) has the most room left under its cap; if none has room, it goes into whichever eligible semester would end up least over its cap. A requirement is marked `overBudget` on the semester it lands in if placing it pushes that semester's total past its cap — the plan screen shows a small "over budget" warning directly above that course, instead of ever dropping a requirement off the plan.
 
 ## Semester labels
 
@@ -80,7 +76,7 @@ The tool is three screens, not one scrolling form:
 - **Empty:** Landing page, before "Build my plan" is clicked.
 - **Invalid input:** Triggered by: future-semester count that's negative, blank, or not a whole number; or every requirement already checked (nothing left to schedule). Message appears inline directly under the field, and the wizard won't advance past it until it's fixed.
 - **In use:** The wizard steps themselves, each holding its own state until "Generate my plan" is clicked.
-- **Plan generated:** The current semester's card is first, listing whatever's in progress this term (no cap — see above), then each future semester with its flag, assigned requirements, and a running difficulty total against its cap, animated filling in. A trailing "Couldn't be scheduled" card lists anything left over.
+- **Plan generated:** The current semester's card is first, listing whatever's in progress this term (no cap — see above), then each future semester with its flag, assigned requirements, and a running difficulty total against its cap, animated filling in. Every remaining requirement appears on some card; one that pushed its semester over the cap shows an inline "over budget" warning above it instead of being left off.
 - **After a reset:** "Start over" clears all state back to defaults and returns to the landing page, without a page reload.
 
 **Default model suggestion (rule-based, not live AI):** if the student flags any semester as study-abroad, default the model choice to D; otherwise default to A. The student can always pick a different card.
@@ -88,7 +84,7 @@ The tool is three screens, not one scrolling form:
 ## Functional requirements
 
 - State held in JS (`takenIds`, `inProgressIds`, current year/term, `futureSemesterCount`, `flags`, `selectedModel`, `plan`), read and changed by more than one interaction.
-- Output worked out from that state (the generated plan, per-semester difficulty totals, unscheduled flags) — not an echo of input.
+- Output worked out from that state (the generated plan, per-semester difficulty totals, over-budget flags) — not an echo of input.
 - At least three kinds of interaction: checkboxes (requirement list), number input + dropdowns (setup), toggle buttons (per-semester flags), radio cards (model), and buttons (Next/Back, Generate, Reset).
 - Page updates itself on every change — no `alert()`.
 - Invalid input shown inline, tool keeps working.

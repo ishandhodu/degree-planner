@@ -13,7 +13,7 @@ Built from `PROPOSAL.md` → `PRD.md` → `DESIGN.md` → `AGENTS.md`, as a land
 3. Enter your current year and term, and how many semesters you have left after this one.
 4. On the semester list, flag any semester that's unusual — study abroad or a gap semester — with a quick three-way toggle. Leave the rest as Normal.
 5. Pick a scheduling model from the four description cards (each explains what it actually does before you choose).
-6. Click **Generate my plan** to see your semester-by-semester plan, including anything that couldn't be scheduled given your setup.
+6. Click **Generate my plan** to see your semester-by-semester plan. Every remaining requirement lands on some semester; if one pushes a semester over its difficulty budget, it's still placed, just flagged with an "over budget" warning.
 7. **Start over** on the plan screen resets everything and returns to the landing page.
 
 Nothing leaves your browser — all data is hardcoded into `js/main.js` or typed in by you, saved to `localStorage` so it survives a refresh.
@@ -31,3 +31,4 @@ I only caught the problem by actually clicking through the wizard with 6+ semest
 - Difficulty ratings are one decimal place (e.g. 4.7), not whole 1–5 integers as originally planned in `PROPOSAL.md` — the real course-rating portal data came back with decimals, so the tool kept that precision instead of rounding it away.
 - The requirement checklist went through two shapes: a three-state control (not started / in progress / completed), simplified to one combined "taken or taking" checkbox when that felt like overkill for a 20-item list, then split back into two checkboxes ("Taken" / "Taking now") once the plan screen needed to actually list what's in progress this term on the current semester's card, rather than just naming the semester.
 - The "AI recommends a model" behavior is a plain JavaScript rule (study-abroad flagged → suggest Model D, otherwise Model A), not a live model call — the assignment requires no outside API calls, so there's no real AI involved in that suggestion.
+- `PROPOSAL.md` expected a "couldn't be scheduled" list for requirements that didn't fit anywhere. That felt unhelpful in practice — a student still needs to take every requirement eventually, so hiding one in a separate failure list isn't useful. The scheduler now places every requirement somewhere, and flags the ones that pushed a semester over its difficulty budget with an inline warning instead of leaving them off the plan.

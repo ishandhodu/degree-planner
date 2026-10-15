@@ -51,8 +51,6 @@ const MODEL_CAPS = {
   D: { normal: 7, abroad: 3, final: 3 },
 };
 
-const MAX_PER_SEMESTER = 2;
-
 function defaultState() {
   return {
     takenIds: [],
@@ -146,30 +144,36 @@ function generatePlan(requirements, semesters, model) {
     return b.difficulty - a.difficulty;
   });
 
-  let pool = sorted;
+  const assignments = semesters.map((sem, index) => ({
+    index,
+    sem,
+    cap: getCap(index, sem.flag, semesters.length, model),
+    items: [],
+    total: 0,
+  }));
 
-  const assignments = semesters.map((sem, index) => {
-    const cap = getCap(index, sem.flag, semesters.length, model);
-    const maxCount = sem.flag === 'gap' ? 0 : MAX_PER_SEMESTER;
-    const items = [];
-    let total = 0;
+  sorted.forEach((req) => {
+    const eligible = assignments.filter(
+      (a) => a.sem.flag !== 'gap' && (req.offered === 'both' || req.offered === a.sem.type)
+    );
+    if (eligible.length === 0) return;
 
-    pool = pool.filter((req) => {
-      if (items.length >= maxCount) return true;
-      const fitsType = req.offered === 'both' || req.offered === sem.type;
-      const fitsCap = total + req.difficulty <= cap;
-      if (fitsType && fitsCap) {
-        items.push(req);
-        total += req.difficulty;
-        return false;
+    let best = eligible[0];
+    let bestOverage = best.total + req.difficulty - best.cap;
+    eligible.forEach((a) => {
+      const overage = a.total + req.difficulty - a.cap;
+      if (overage < bestOverage) {
+        best = a;
+        bestOverage = overage;
       }
-      return true;
     });
 
-    return { index, sem, cap, items, total };
+    const overBudget = best.total + req.difficulty > best.cap;
+    best.items.push({ ...req, overBudget });
+    best.total += req.difficulty;
   });
 
-  return { assignments, unscheduled: pool };
+  return { assignments };
 }
 
 // --- Screens ---
@@ -514,7 +518,8 @@ function buildSemesterColumn(entry) {
   const isCurrent = sem.flag === 'current';
   const isGap = sem.flag === 'gap';
   const isAbroad = sem.flag === 'abroad';
-  const isGhostEligible = !isCurrent && !isGap;
+  const hasBudget = !isCurrent && !isGap;
+  const overBudgetCount = items.filter((item) => item.overBudget).length;
 
   const column = document.createElement('div');
   column.className = 'plan-column';
@@ -543,27 +548,24 @@ function buildSemesterColumn(entry) {
   const ratio = document.createElement('span');
   ratio.className = 'plan-ratio';
   ratio.textContent = isCurrent || isGap ? '—' : `${total.toFixed(1)} / ${cap}`;
+  if (hasBudget && total > cap) ratio.style.color = 'var(--brick)';
   headRow.append(term, ratio);
   head.appendChild(headRow);
 
   const barTrack = document.createElement('div');
   barTrack.className = 'plan-bar-track';
   const segmentEls = [];
-  let ghostEl = null;
-  if (isGhostEligible) {
+  if (hasBudget) {
     const baseColor = loadColorFor(cap > 0 ? total / cap : 0);
     items.forEach((item) => {
       const seg = document.createElement('div');
       seg.className = 'plan-bar-segment';
-      seg.dataset.targetWidth = String((item.difficulty / cap) * 100);
+      seg.dataset.targetWidth = String(cap > 0 ? (item.difficulty / cap) * 100 : 0);
       seg.style.width = '0%';
       seg.style.background = baseColor;
       barTrack.appendChild(seg);
       segmentEls.push(seg);
     });
-    ghostEl = document.createElement('div');
-    ghostEl.className = 'plan-bar-ghost';
-    barTrack.appendChild(ghostEl);
   }
   head.appendChild(barTrack);
 
@@ -576,6 +578,9 @@ function buildSemesterColumn(entry) {
     defaultTagColor = 'var(--forest)';
   } else if (isGap) {
     defaultTagText = 'gap semester · no courses';
+  } else if (overBudgetCount > 0) {
+    defaultTagText = `${overBudgetCount} course${overBudgetCount === 1 ? '' : 's'} over budget`;
+    defaultTagColor = 'var(--brick)';
   } else if (isAbroad) {
     defaultTagText = '— study abroad';
     defaultTagColor = 'var(--forest)';
@@ -589,9 +594,21 @@ function buildSemesterColumn(entry) {
   const slots = document.createElement('div');
   slots.className = 'plan-slots';
   const rowEls = [];
-  for (let i = 0; i < SLOT_COUNT; i++) {
+  const rowCount = Math.max(SLOT_COUNT, items.length);
+  for (let i = 0; i < rowCount; i++) {
     const row = document.createElement('div');
     row.className = 'plan-slot';
+
+    const item = items[i];
+    if (item && item.overBudget) {
+      const warning = document.createElement('p');
+      warning.className = 'plan-slot-warning';
+      warning.textContent = 'over budget';
+      row.appendChild(warning);
+    }
+
+    const slotRow = document.createElement('div');
+    slotRow.className = 'plan-slot-row';
     const left = document.createElement('div');
     left.className = 'plan-slot-left';
     const code = document.createElement('span');
@@ -602,7 +619,6 @@ function buildSemesterColumn(entry) {
     const right = document.createElement('span');
     right.className = 'plan-slot-credits';
 
-    const item = items[i];
     if (item) {
       code.textContent = item.id;
       name.textContent = courseShortName(item);
@@ -614,9 +630,11 @@ function buildSemesterColumn(entry) {
           if (r !== row) r.style.opacity = '0.45';
         });
         row.style.background = 'var(--band-light)';
-        segmentEls.forEach((s) => {
-          s.style.opacity = s === segEl ? '1' : '0.25';
-        });
+        if (segEl) {
+          segmentEls.forEach((s) => {
+            s.style.opacity = s === segEl ? '1' : '0.25';
+          });
+        }
       });
       row.addEventListener('mouseleave', () => {
         rowEls.forEach((r) => {
@@ -632,7 +650,8 @@ function buildSemesterColumn(entry) {
       name.classList.add('empty');
     }
 
-    row.append(left, right);
+    slotRow.append(left, right);
+    row.appendChild(slotRow);
     slots.appendChild(row);
     rowEls.push(row);
   }
@@ -641,7 +660,7 @@ function buildSemesterColumn(entry) {
   const foot = document.createElement('div');
   foot.className = 'plan-card-foot';
   const placed = document.createElement('span');
-  placed.textContent = `${items.length} of ${SLOT_COUNT} placed`;
+  placed.textContent = `${items.length} course${items.length === 1 ? '' : 's'}`;
   const totalEl = document.createElement('span');
   totalEl.textContent = isCurrent || isGap ? '' : `${total.toFixed(1)} difficulty`;
   foot.append(placed, totalEl);
@@ -649,7 +668,7 @@ function buildSemesterColumn(entry) {
 
   column.appendChild(card);
 
-  if (isGhostEligible) {
+  if (hasBudget && overBudgetCount === 0) {
     card.addEventListener('mouseenter', () => {
       tag.textContent = `${(cap - total).toFixed(1)} difficulty open`;
       tag.style.color = 'var(--muted)';
@@ -664,124 +683,11 @@ function buildSemesterColumn(entry) {
     columnEl: column,
     dotEl: dot,
     segmentEls,
-    ghostEl,
     ratioEl: ratio,
-    tagEl: tag,
-    barTrackEl: barTrack,
     cap,
     baseUsed: total,
     rowEls,
-    defaultTagText,
-    defaultTagColor,
-    isGhostEligible,
   };
-}
-
-function applyGhostPreview(ref, req) {
-  if (!ref.isGhostEligible) return;
-  const nu = ref.baseUsed + req.difficulty;
-  const ratio = ref.cap > 0 ? nu / ref.cap : 0;
-  const over = ratio > 1;
-
-  ref.ratioEl.textContent = `${nu.toFixed(1)} / ${ref.cap}`;
-  ref.ratioEl.style.color = over ? 'var(--brick)' : '';
-  ref.segmentEls.forEach((s) => {
-    s.style.background = 'var(--ghost-seg)';
-  });
-
-  const ghostPct = ref.cap > 0 ? (Math.max(0, Math.min(req.difficulty, ref.cap - ref.baseUsed)) / ref.cap) * 100 : 0;
-  const color = loadColorFor(ratio);
-  ref.ghostEl.style.width = `${ghostPct}%`;
-  ref.ghostEl.style.background = `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`;
-  ref.barTrackEl.style.boxShadow = over ? 'inset 0 0 0 1px var(--brick)' : '';
-
-  ref.tagEl.textContent = over
-    ? `${req.id} would put this over by ${(nu - ref.cap).toFixed(1)}`
-    : `${req.id} fits here`;
-  ref.tagEl.style.color = over ? 'var(--brick)' : 'var(--forest)';
-}
-
-function resetGhostPreview(ref) {
-  if (!ref.isGhostEligible) return;
-  ref.ratioEl.textContent = `${ref.baseUsed.toFixed(1)} / ${ref.cap}`;
-  ref.ratioEl.style.color = '';
-  const baseColor = loadColorFor(ref.cap > 0 ? ref.baseUsed / ref.cap : 0);
-  ref.segmentEls.forEach((s) => {
-    s.style.background = baseColor;
-  });
-  ref.ghostEl.style.width = '0';
-  ref.barTrackEl.style.boxShadow = '';
-  ref.tagEl.textContent = ref.defaultTagText;
-  ref.tagEl.style.color = ref.defaultTagColor;
-}
-
-function buildUnscheduledColumn(unscheduled, ghostTargets) {
-  const column = document.createElement('div');
-  column.className = 'plan-column plan-unscheduled-column';
-
-  const marker = document.createElement('div');
-  marker.className = 'plan-marker';
-  const dot = document.createElement('span');
-  dot.className = 'plan-dot diamond';
-  const label = document.createElement('span');
-  label.className = 'plan-year-label brick';
-  label.textContent = 'UNPLACED';
-  marker.append(dot, label);
-  column.appendChild(marker);
-
-  const card = document.createElement('div');
-  card.className = 'plan-card plan-unscheduled-card';
-
-  const head = document.createElement('div');
-  head.className = 'plan-card-head';
-  const headRow = document.createElement('div');
-  headRow.className = 'plan-card-head-row';
-  const title = document.createElement('span');
-  title.className = 'plan-unscheduled-title';
-  title.textContent = "Couldn't be scheduled";
-  const count = document.createElement('span');
-  count.className = 'plan-unscheduled-count';
-  count.textContent = String(unscheduled.length);
-  headRow.append(title, count);
-  head.appendChild(headRow);
-  const hint = document.createElement('p');
-  hint.className = 'plan-tag';
-  hint.textContent = 'Hover one to preview it in each semester.';
-  head.appendChild(hint);
-  card.appendChild(head);
-
-  const list = document.createElement('div');
-  list.className = 'plan-unscheduled-list';
-  unscheduled.forEach((req) => {
-    const row = document.createElement('div');
-    row.className = 'plan-unscheduled-row';
-    const left = document.createElement('div');
-    left.className = 'plan-slot-left';
-    const code = document.createElement('span');
-    code.className = 'plan-slot-code';
-    code.textContent = req.id;
-    const name = document.createElement('span');
-    name.className = 'plan-slot-name ellipsis';
-    name.textContent = courseShortName(req);
-    left.append(code, name);
-    const diff = document.createElement('span');
-    diff.className = 'plan-slot-credits';
-    diff.textContent = `diff ${req.difficulty.toFixed(1)}`;
-    row.append(left, diff);
-
-    row.addEventListener('mouseenter', () => {
-      ghostTargets.forEach((ref) => applyGhostPreview(ref, req));
-    });
-    row.addEventListener('mouseleave', () => {
-      ghostTargets.forEach((ref) => resetGhostPreview(ref));
-    });
-
-    list.appendChild(row);
-  });
-  card.appendChild(list);
-  column.appendChild(card);
-
-  return { columnEl: column, dotEl: dot, segmentEls: [], rowEls: [], ratioEl: null };
 }
 
 function easeOutCubic(x) {
@@ -792,7 +698,7 @@ function easeOutCubic(x) {
 function applyColumnFrame(col, pCard, pDot) {
   col.columnEl.style.opacity = String(pCard);
   col.columnEl.style.transform = `translateY(${(1 - pCard) * 18}px)`;
-  col.dotEl.style.transform = `scale(${(0.4 + 0.6 * pDot).toFixed(3)})${col.dotEl.classList.contains('diamond') ? ' rotate(45deg)' : ''}`;
+  col.dotEl.style.transform = `scale(${(0.4 + 0.6 * pDot).toFixed(3)})`;
   col.segmentEls.forEach((seg) => {
     seg.style.width = `${Number(seg.dataset.targetWidth) * pCard}%`;
   });
@@ -875,27 +781,20 @@ function renderPlanTimeline(plan) {
   const columnRefs = entries.map((entry) => buildSemesterColumn(entry));
   columnRefs.forEach((col) => planTrack.appendChild(col.columnEl));
 
-  let unscheduledCol = null;
-  if (plan.unscheduled.length > 0) {
-    const sorted = [...plan.unscheduled].sort((a, b) => b.difficulty - a.difficulty);
-    const ghostTargets = columnRefs.filter((c) => c.isGhostEligible);
-    unscheduledCol = buildUnscheduledColumn(sorted, ghostTargets);
-    planTrack.appendChild(unscheduledCol.columnEl);
-  }
-
-  const allColumns = unscheduledCol ? [...columnRefs, unscheduledCol] : columnRefs;
-
   const semesterCount = plan.assignments.length;
   const placedCount = plan.assignments.reduce((sum, a) => sum + a.items.length, 0);
-  const unplacedCount = plan.unscheduled.length;
+  const overBudgetCount = plan.assignments.reduce(
+    (sum, a) => sum + a.items.filter((item) => item.overBudget).length,
+    0
+  );
   planSummaryEl.innerHTML =
     `<span>${semesterCount} semester${semesterCount === 1 ? '' : 's'} planned</span>` +
     `<span>${placedCount} course${placedCount === 1 ? '' : 's'} placed</span>` +
-    (unplacedCount > 0 ? `<span class="brick">${unplacedCount} couldn't fit</span>` : '');
+    (overBudgetCount > 0 ? `<span class="brick">${overBudgetCount} over budget</span>` : '');
 
-  lastPlanColumns = allColumns;
+  lastPlanColumns = columnRefs;
   lastSpineFill = spineFill;
-  animatePlanLoad(allColumns, spineFill);
+  animatePlanLoad(columnRefs, spineFill);
 }
 
 function generateAndShowPlan() {
@@ -912,7 +811,6 @@ function generateAndShowPlan() {
             items: [],
             total: 0,
           })),
-          unscheduled: [],
         }
       : generatePlan(remaining, semesters, state.selectedModel);
 

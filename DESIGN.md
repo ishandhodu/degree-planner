@@ -15,11 +15,9 @@ A degree-audit ledger. Workday shows what's done; this tool shows what's left an
 | Ink | `#1F2E27` | Text, rules |
 | Forest | `#3D6B52` | Budget bar at normal fill, headings accents, primary buttons |
 | Mustard | `#B98B2A` | Budget bar at/near its cap |
-| Brick | `#A1402C` | Budget bar over cap, "couldn't be scheduled" flags, invalid-input messages |
+| Brick | `#A1402C` | Budget bar over cap, "over budget" warnings, invalid-input messages |
 | Band-light | `#EEF3EB` | Hovered course row on the plan timeline |
-| Brick-tint | `#F4E7E1` | Hovered row in the "couldn't be scheduled" list |
-| Muted | `#55625B` | Secondary/metadata text (credits, counts, hints) |
-| Ghost-seg | `#9BB0A2` | A scheduled course's bar segment while previewing an unplaced course against it |
+| Muted | `#55625B` | Secondary/metadata text (difficulty, counts, hints) |
 
 ## Type
 
@@ -45,14 +43,14 @@ Fall 2026 ───────────────────────�
 **Two deliberate exceptions to "no cards":**
 
 1. **The wizard** is its own narrower column (~480px), bordered as one panel. A flat scrolling page read as bland and not "a professional tool's sign-up flow"; a bounded step panel with a progress bar above it, one question at a time, reads as guided rather than as a form dumped on the page.
-2. **The plan screen** (below) also moved to cards. A vertical stack of hairline-ruled semesters worked for ~5 semesters but read as a long, undifferentiated scroll once a student had 8–9 remaining — nothing signaled "this is a timeline," just a list. The plan is now a horizontal, full-bleed row of one card per semester strung along a thin spine line, read left to right like an actual planner. Each card keeps a hard, un-blurred offset shadow on hover (`6px 6px 0 var(--ink)`, forest or brick on the current/unplaced variants) rather than a soft UI-kit shadow at rest — it reads as a card lifting off flat paper, not as a floating panel, so the ledger's "flat paper + ink" feel carries over even though the layout changed. The landing hero sample stays flat and card-free; only the plan screen itself made this trade.
+2. **The plan screen** (below) also moved to cards. A vertical stack of hairline-ruled semesters worked for ~5 semesters but read as a long, undifferentiated scroll once a student had 8–9 remaining — nothing signaled "this is a timeline," just a list. The plan is now a horizontal, full-bleed row of one card per semester strung along a thin spine line, read left to right like an actual planner. Each card keeps a hard, un-blurred offset shadow on hover (`6px 6px 0 var(--ink)`, forest on the current card) rather than a soft UI-kit shadow at rest — it reads as a card lifting off flat paper, not as a floating panel, so the ledger's "flat paper + ink" feel carries over even though the layout changed. The landing hero sample stays flat and card-free; only the plan screen itself made this trade.
 
 ## States
 
 - **Landing:** headline, one paragraph of explanation, a static sample ledger row (same visual language as the real plan, non-interactive), and a "Build my plan" button.
 - **Wizard, empty/in progress:** one question per screen inside the bordered panel, with a progress bar (`Step N of M`) above it. Step content fades/slides in on each change (~250ms, skipped under `prefers-reduced-motion`).
 - **Invalid input:** a line of brick-red (`#A1402C`) system-mono text appears directly under the offending field (e.g., under the remaining-semesters input: "Enter 0 or more remaining semesters"). The field itself gets a brick-red border. The wizard won't advance until it's fixed.
-- **Plan generated:** a header (title, counts — semesters planned / courses placed / couldn't fit — and two scroll buttons), then a horizontal, snap-scrolling row of semester cards strung along a thin spine with a marker dot per semester (filled + ringed forest for the current one, dashed for a gap semester, a brick diamond for the trailing "unplaced" card). Each card shows the term, its `used / cap` budget bar (forest/mustard/brick by fill, one segment per course), and up to four course slots — unused ones read `(elective)`, or `—` on the current semester specifically (which has no budget bar, since it isn't something `generatePlan` assigned; it lists whatever's marked "Taking now" instead). Cards load in left-to-right with a brief rise-and-fade, replayable from the footer. Hovering a course row isolates it (dims the others, highlights its bar segment); hovering an unplaced course in the trailing card previews it against every semester's bar and budget at once, in brick if it would go over the cap. A "Couldn't be scheduled" card, same card treatment, in brick, is that trailing card — present only if something didn't fit.
+- **Plan generated:** a header (title, counts — semesters planned / courses placed / courses over budget — and two scroll buttons), then a horizontal, snap-scrolling row of semester cards strung along a thin spine with a marker dot per semester (filled + ringed forest for the current one, dashed for a gap semester). Each card shows the term, its `used / cap` budget bar (forest/mustard/brick by fill, one segment per course), and at least four course slots, growing to fit however many requirements actually landed there — unused ones read `(elective)`, or `—` on the current semester specifically (which has no budget bar, since it isn't something `generatePlan` assigned; it lists whatever's marked "Taking now" instead). Every remaining requirement is placed on some card; one that pushed its semester over the cap gets a small brick "over budget" line directly above it, so nothing is ever dropped from the plan. Cards load in left-to-right with a brief rise-and-fade, replayable from the footer. Hovering a course row isolates it (dims the others, highlights its bar segment).
 - **After reset:** returns to the landing screen exactly as a first visit — no transition needed, since "Start over" is a deliberate full return, not a partial change.
 
 ## Motion
@@ -62,7 +60,6 @@ All skipped under `prefers-reduced-motion`:
 1. Each wizard step fades and slides in slightly (~250ms) when it appears, so moving through the questions feels like progressing, not like the page just changing.
 2. When the plan renders, cards animate in left to right (rise + fade, ~650ms each, staggered ~130ms apart) and the spine line draws itself behind them, so the timeline visibly builds rather than appearing all at once. A "Replay" button in the footer reruns this same sequence on demand.
 3. Each card lifts on hover (an un-blurred offset shadow, ~280ms) — the only hover transition on otherwise static content, there specifically to make the cards read as physical objects on the ledger.
-4. Previewing an unplaced course over a semester's budget bar animates the bar's ghost segment in (~350ms) rather than snapping, so the "would this fit" question reads as a live comparison.
 
 ## Accessibility
 

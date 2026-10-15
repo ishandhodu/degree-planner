@@ -18,14 +18,16 @@
   places, stop and fold it back into the shared function first.
 - One shared stylesheet (`css/styles.css`). No inline `<style>` blocks, no
   second stylesheet.
-- No `alert()` boxes anywhere. Invalid input and "couldn't be scheduled"
-  both render inline, per the states in `PRD.md`/`DESIGN.md`.
+- No `alert()` boxes anywhere. Invalid input renders inline; a course that
+  can't fit a semester's budget is placed anyway with an inline "over
+  budget" warning — nothing is ever left off the plan. Per the states in
+  `PRD.md`/`DESIGN.md`.
 - Follow `DESIGN.md`'s tokens exactly — the palette, the two typefaces and
   their roles, hairline rules instead of cards/shadows/border-radius. Don't
   introduce a new color or a rounded corner because it's the easy default.
-- State (`completedIds`, `semesters`, `selectedModel`, `plan`) persists to
-  `localStorage` under one key, `degree-planner-state`. Don't scatter state
-  across multiple keys.
+- State (`takenIds`, `inProgressIds`, `semesters`, `selectedModel`, `plan`)
+  persists to `localStorage` under one key, `degree-planner-state`. Don't
+  scatter state across multiple keys.
 - File and folder names: lowercase, no spaces.
 - Commit as you go — one commit per working piece (one interaction, one
   state, one model), not one commit holding the finished tool.
