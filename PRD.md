@@ -31,14 +31,18 @@ const CORE_REQUIREMENTS = [
 ];
 ```
 
-Difficulty is 1–5, from the course-rating portal.
+Difficulty is 1–5 (one decimal place, matching the real portal data — e.g. 4.7), from the course-rating portal.
 
 **State (JS variables, saved to `localStorage`):**
 
-- `completedIds`: set of requirement IDs the student has checked off.
-- `semesters`: a list built from how many semesters remain, each one `{ label, type: "fall" | "spring", flag: "normal" | "abroad" | "final" }`.
+- `requirementStatus`: a map of requirement ID → `"not_started"` | `"in_progress"` | `"completed"`. Replaces a plain completed/not-completed flag so the tool can tell "already done" apart from "currently taking this term."
+- `currentYearIndex` / `currentTerm`: the student's current class year (0 = Freshman … 3 = Senior) and term (`"fall"` | `"spring"`), used to compute every semester label going forward.
+- `futureSemesterCount`: how many semesters remain **after** the current one.
+- `flags`: per-future-semester array of `"normal"` | `"abroad"` | `"gap"`.
 - `selectedModel`: one of `"A"`, `"B"`, `"C"`, `"D"`.
-- `plan`: the generated output — which requirement is assigned to which semester, and any requirement that couldn't be placed.
+- `plan`: the generated output — which requirement is assigned to which future semester, and any requirement that couldn't be placed.
+
+**The current semester is locked, not scheduled.** Requirements marked `"in_progress"` belong to the current semester and are shown there as already-decided — the algorithm never touches them and never enforces a difficulty cap on that semester, since it's real and already happening. Only `"not_started"` requirements are handed to `generatePlan`, and only into the semesters that come after the current one.
 
 ## Scheduling logic
 
@@ -59,20 +63,24 @@ For each semester in order, fill it with requirements from the sorted list that 
 
 Anything left unassigned after all semesters are filled is flagged in the output as "couldn't be scheduled as configured."
 
+## Semester labels
+
+Every semester — current and future — is labeled by class year + term (e.g. "Sophomore Spring"), computed forward from `currentYearIndex`/`currentTerm`. Past Senior year, the label falls back to "Year 5", "Year 6", etc. rather than breaking.
+
 ## States
 
-- **Empty:** First visit. Shows the full core requirement list as checkboxes (none checked), a setup form (number of remaining semesters; per-semester abroad/gap flags; model dropdown, defaulted by rule — see below), and a "Generate Plan" button. The plan area shows placeholder text: "Mark what you've completed and set up your remaining semesters, then generate your plan."
-- **Invalid input:** Triggered by: remaining-semesters count that's zero, blank, or not a number; or every requirement already marked completed (nothing left to schedule). Message appears inline directly under the relevant field (e.g., "Enter at least 1 remaining semester"), the Generate button does nothing until it's fixed, and nothing else on the page resets.
-- **In use:** After a valid "Generate Plan" click — a semester-by-semester list, each showing its label, flag (if any), assigned requirement(s) with difficulty, and a running difficulty total against its cap. A separate "Couldn't be scheduled" section lists anything left over, if any.
-- **After a reset:** "Reset" clears `completedIds`, `semesters`, `selectedModel`, and `plan` back to defaults and returns to the Empty state, without a page reload.
+- **Empty:** First visit. Shows the full core requirement list, each with a status control (Not started / In progress / Completed — none set), a setup form (current year + term; how many future semesters remain; per-future-semester abroad/gap flags; model dropdown, defaulted by rule — see below), and a "Generate Plan" button. The plan area shows placeholder text: "Mark what you've completed and what you're taking now, set up your remaining semesters, then generate your plan."
+- **Invalid input:** Triggered by: future-semester count that's negative, blank, or not a whole number; or every requirement already marked completed (nothing left to schedule — "in progress" doesn't count as nothing-left, since it's already real work). Message appears inline directly under the relevant field, the Generate button does nothing until it's fixed, and nothing else on the page resets.
+- **In use:** After a valid "Generate Plan" click — the current semester appears first, labeled and showing whatever's marked "in progress" with no cap or budget bar (it's locked, not scheduled). Then each future semester: label, flag (if any), assigned requirement(s) with difficulty, and a running difficulty total against its cap. A separate "Couldn't be scheduled" section lists anything left over, if any.
+- **After a reset:** "Reset" clears `requirementStatus`, `currentYearIndex`/`currentTerm`, `futureSemesterCount`, `flags`, `selectedModel`, and `plan` back to defaults and returns to the Empty state, without a page reload.
 
 **Default model suggestion (rule-based, not live AI):** if the student flags any semester as study-abroad, default the dropdown to Model D; otherwise default to Model A. The student can always override it from the dropdown.
 
 ## Functional requirements
 
-- State held in JS (`completedIds`, `semesters`, `selectedModel`, `plan`), read and changed by more than one interaction.
+- State held in JS (`requirementStatus`, current year/term, `futureSemesterCount`, `flags`, `selectedModel`, `plan`), read and changed by more than one interaction.
 - Output worked out from that state (the generated plan, per-semester difficulty totals, unscheduled flags) — not an echo of input.
-- At least three kinds of interaction: checkboxes (mark completed), a number input + flag checkboxes (semester setup), a dropdown (model selection), and buttons (Generate, Reset).
+- At least three kinds of interaction: per-requirement status selects, number input + year/term selects (setup), dropdowns (per-semester flags, model selection), and buttons (Generate, Reset).
 - Page updates itself on every change — no `alert()`.
 - Invalid input shown inline, tool keeps working.
 - Reset returns to Empty state without reloading the page.
@@ -93,3 +101,4 @@ Anything left unassigned after all semesters are filled is flagged in the output
 1. Pull difficulty ratings live from the course-rating portal instead of a hardcoded snapshot — needs a server/API, out of scope here.
 2. Prerequisite ordering between core requirements.
 3. Factor in credit load, not just difficulty.
+4. The greedy assignment isn't globally optimal — it fills semesters in order and never revisits an earlier choice, so a different combination could occasionally schedule one more item than it does. Acceptable for this project's size; an exhaustive/backtracking search was considered and rejected as overkill.
