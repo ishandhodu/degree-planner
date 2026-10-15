@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Degree Planner</title>
+<meta name="description" content="Plan which semester to take each remaining core requirement in, based on difficulty and your remaining semesters.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <header>
+    <h1>Degree Planner</h1>
+    <p class="intro">Mark what you've completed, set up your remaining semesters, and get a plan for when to take what's left.</p>
+  </header>
+
+  <main>
+    <section id="checklist-section" aria-labelledby="checklist-heading">
+      <h2 id="checklist-heading">Core requirements</h2>
+      <ul id="requirement-checklist"></ul>
+    </section>
+
+    <section id="plan-section" aria-labelledby="plan-heading">
+      <h2 id="plan-heading">Your plan</h2>
+      <p id="plan-placeholder">Mark what you've completed and set up your remaining semesters, then generate your plan.</p>
+      <div id="plan-output"></div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2026 Ishan Dhodapkar</p>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
