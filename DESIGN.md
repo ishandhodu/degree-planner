@@ -61,8 +61,13 @@ All skipped under `prefers-reduced-motion`:
 2. When the plan renders, cards animate in left to right (rise + fade, ~650ms each, staggered ~130ms apart) and the spine line draws itself behind them, so the timeline visibly builds rather than appearing all at once. A "Replay" button in the footer reruns this same sequence on demand.
 3. Each card lifts on hover (an un-blurred offset shadow, ~280ms) — the only hover transition on otherwise static content, there specifically to make the cards read as physical objects on the ledger.
 
+## Info tips
+
+A small circled "i" (15px, `--muted` border, mono) sits next to anything that isn't self-explanatory on first read: the checklist question, the semester-flags question, and the difficulty ratio on every plan-screen card. Hovering or tapping it opens a bordered note-card popover (paper background, hard offset shadow, same visual language as everything else — no soft tooltip styling). It opens on hover for a quick desktop glance, and toggles open/closed on click/tap so it works without a mouse; clicking anywhere else or pressing Escape closes it. Only one is open at a time.
+
 ## Accessibility
 
 - Text contrast: ink (`#1F2E27`) on paper (`#FDFCF7`) and band (`#E3EDE0`) both clear AA for body text.
 - Every interactive element (checkbox, input, toggle button, radio card, button) gets a visible focus outline in forest green, not just a browser default. Each wizard step autofocuses its first field, and pressing Enter in a field advances to the next question, for a keyboard-first flow.
 - Budget-bar color is never the only signal — the "x / y" number is always shown alongside the bar, so color-blind users aren't relying on forest/mustard/brick alone.
+- Info tips are real `<button>` elements with an `aria-label`, reachable by Tab and operable with Enter/Space, not `div`s with a click handler.

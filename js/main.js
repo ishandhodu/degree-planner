@@ -176,6 +176,61 @@ function generatePlan(requirements, semesters, model) {
   return { assignments };
 }
 
+// --- Info tips: small "i" icons that explain a confusing element on hover/tap ---
+function createInfoTip(text) {
+  const wrap = document.createElement('span');
+  wrap.className = 'info-tip';
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'info-tip-btn';
+  btn.textContent = 'i';
+  btn.setAttribute('aria-label', 'What does this mean?');
+
+  const bubble = document.createElement('span');
+  bubble.className = 'info-tip-bubble';
+  bubble.setAttribute('role', 'tooltip');
+  bubble.textContent = text;
+
+  btn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const alreadyOpen = wrap.classList.contains('open');
+    document.querySelectorAll('.info-tip.open').forEach((el) => {
+      el.classList.remove('open');
+      el.querySelector('.info-tip-bubble').style.transform = 'translateX(-50%)';
+    });
+    if (!alreadyOpen) {
+      wrap.classList.add('open');
+      positionInfoTip(bubble);
+    }
+  });
+
+  wrap.append(btn, bubble);
+  return wrap;
+}
+
+function positionInfoTip(bubble) {
+  bubble.style.transform = 'translateX(-50%)';
+  const rect = bubble.getBoundingClientRect();
+  const overflowRight = rect.right - (window.innerWidth - 8);
+  const overflowLeft = 8 - rect.left;
+  if (overflowRight > 0) {
+    bubble.style.transform = `translateX(calc(-50% - ${overflowRight}px))`;
+  } else if (overflowLeft > 0) {
+    bubble.style.transform = `translateX(calc(-50% + ${overflowLeft}px))`;
+  }
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.info-tip.open').forEach((el) => el.classList.remove('open'));
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') {
+    document.querySelectorAll('.info-tip.open').forEach((el) => el.classList.remove('open'));
+  }
+});
+
 // --- Screens ---
 const screens = {
   landing: document.getElementById('screen-landing'),
@@ -269,7 +324,14 @@ function renderChecklistInto(ul) {
 const checklistStep = {
   id: 'checklist',
   render(container) {
-    container.innerHTML = '<p class="step-question">Which core requirements have you already taken, or are you currently taking?</p><p class="step-subtext">Check "Taken" if you\'ve completed it, or "Taking now" if you\'re enrolled in it this semester. Leave both unchecked if it\'s still ahead of you.</p><ul id="requirement-checklist"></ul>';
+    container.innerHTML = '<p class="step-question">Which core requirements have you already taken, or are you currently taking?<span id="checklist-info-slot"></span></p><p class="step-subtext">Check "Taken" if you\'ve completed it, or "Taking now" if you\'re enrolled in it this semester. Leave both unchecked if it\'s still ahead of you.</p><ul id="requirement-checklist"></ul>';
+    document
+      .getElementById('checklist-info-slot')
+      .appendChild(
+        createInfoTip(
+          'Both remove a requirement from scheduling. "Taking now" also makes it show up on your current semester\'s card in the generated plan.'
+        )
+      );
     renderChecklistInto(document.getElementById('requirement-checklist'));
   },
   onNext() {
@@ -372,9 +434,17 @@ const semesterFlagsStep = {
       .join('');
 
     container.innerHTML = `
-      <p class="step-question">Anything unusual in any of these semesters?</p>
+      <p class="step-question">Anything unusual in any of these semesters?<span id="flags-info-slot"></span></p>
       <p class="step-subtext">Flag a semester as "Abroad" or "Gap" if it won't carry a normal course load. Leave the rest as Normal.</p>
       <div class="semester-list">${rows}</div>`;
+
+    document
+      .getElementById('flags-info-slot')
+      .appendChild(
+        createInfoTip(
+          'Normal uses your model\'s usual difficulty budget. Abroad lowers that budget, since you\'ll likely take fewer core requirements that term. Gap skips the semester entirely — nothing gets scheduled there.'
+        )
+      );
 
     container.querySelectorAll('.flag-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -549,7 +619,24 @@ function buildSemesterColumn(entry) {
   ratio.className = 'plan-ratio';
   ratio.textContent = isCurrent || isGap ? '—' : `${total.toFixed(1)} / ${cap}`;
   if (hasBudget && total > cap) ratio.style.color = 'var(--brick)';
-  headRow.append(term, ratio);
+
+  let infoText;
+  if (isCurrent) {
+    infoText =
+      'Courses here are whatever you checked "Taking now" earlier. This semester isn\'t scheduled by the planner, so there\'s no difficulty budget to show.';
+  } else if (isGap) {
+    infoText = "You flagged this semester as a gap, so the planner skips it entirely — nothing gets scheduled here.";
+  } else {
+    infoText =
+      'This is the total difficulty of what\'s assigned here, out of this semester\'s difficulty budget. Difficulty is a 1–5 rating per course; the budget comes from your scheduling model' +
+      (isAbroad ? ', and study-abroad semesters get a lighter one' : '') +
+      '. A course that doesn\'t fit still gets placed — it\'s marked "over budget" instead of being left off your plan.';
+  }
+  const ratioWrap = document.createElement('span');
+  ratioWrap.className = 'plan-ratio-wrap';
+  ratioWrap.append(ratio, createInfoTip(infoText));
+
+  headRow.append(term, ratioWrap);
   head.appendChild(headRow);
 
   const barTrack = document.createElement('div');

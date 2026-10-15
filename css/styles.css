@@ -162,6 +162,77 @@ input[type="number"].invalid {
   margin: 0.4rem 0 0;
 }
 
+/* ---------- Info tips (small explainer icons) ---------- */
+
+.info-tip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.3rem;
+}
+
+.info-tip-btn {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--muted);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  line-height: 1;
+  cursor: help;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.info-tip-btn:hover,
+.info-tip-btn:focus-visible,
+.info-tip.open .info-tip-btn {
+  border-color: var(--forest);
+  color: var(--forest);
+}
+
+.info-tip-bubble {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 230px;
+  max-width: 60vw;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  padding: 0.6rem 0.7rem;
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--ink);
+  text-align: left;
+  white-space: normal;
+  z-index: 30;
+}
+
+.info-tip-bubble::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: var(--ink);
+}
+
+.info-tip:hover .info-tip-bubble,
+.info-tip-btn:focus-visible ~ .info-tip-bubble,
+.info-tip.open .info-tip-bubble {
+  display: block;
+}
+
 /* ---------- Landing screen ---------- */
 
 #screen-landing {
@@ -762,12 +833,17 @@ body.plan-active > footer {
   font-style: italic;
 }
 
+.plan-ratio-wrap {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+
 .plan-ratio {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  flex: none;
   transition: color 0.2s ease;
 }
 
