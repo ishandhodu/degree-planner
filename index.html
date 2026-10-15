@@ -12,23 +12,46 @@
 </head>
 <body>
 
-  <header>
-    <h1>Degree Planner</h1>
-    <p class="intro">Mark what you've completed, set up your remaining semesters, and get a plan for when to take what's left.</p>
-  </header>
+  <!-- Landing screen -->
+  <section id="screen-landing" class="screen">
+    <header>
+      <p class="eyebrow">Degree Planner</p>
+      <h1>What's left, and when to take it.</h1>
+      <p class="intro">Workday shows what you've completed. This doesn't show you when to take what's left — so it recommends a semester-by-semester plan for your remaining core requirements, balanced against how difficult each one is.</p>
+    </header>
 
-  <main>
-    <section id="checklist-section" aria-labelledby="checklist-heading">
-      <h2 id="checklist-heading">Core requirements</h2>
-      <ul id="requirement-checklist"></ul>
-    </section>
+    <div class="sample-ledger" aria-hidden="true">
+      <div class="semester-head">
+        <span class="label">Junior Fall</span>
+        <span>6.0 / 7</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width: 86%"></div></div>
+      <ul class="band-items">
+        <li><span>FIN 2000 — Principles of Finance</span><span>diff 4.0</span></li>
+        <li><span>LAW 1000 — Business Law</span><span>diff 2.0</span></li>
+      </ul>
+    </div>
 
-    <section id="plan-section" aria-labelledby="plan-heading">
-      <h2 id="plan-heading">Your plan</h2>
-      <p id="plan-placeholder">Mark what you've completed and set up your remaining semesters, then generate your plan.</p>
-      <div id="plan-output"></div>
-    </section>
-  </main>
+    <button type="button" id="start-btn">Build my plan</button>
+  </section>
+
+  <!-- Wizard screen: one question at a time -->
+  <section id="screen-wizard" class="screen" hidden>
+    <div id="step-content" aria-live="polite"></div>
+    <div class="wizard-nav">
+      <button type="button" id="back-btn">Back</button>
+      <button type="button" id="next-btn">Next</button>
+    </div>
+  </section>
+
+  <!-- Plan screen -->
+  <section id="screen-plan" class="screen" hidden>
+    <header>
+      <h1>Your plan</h1>
+    </header>
+    <div id="plan-output"></div>
+    <button type="button" id="start-over-btn">Start over</button>
+  </section>
 
   <footer>
     <p>&copy; 2026 Ishan Dhodapkar</p>
