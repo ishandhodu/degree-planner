@@ -32,15 +32,23 @@
       </ul>
     </div>
 
-    <button type="button" id="start-btn">Build my plan</button>
+    <button type="button" id="start-btn" class="btn-primary btn-large">Build my plan</button>
+    <p class="landing-note">Takes about a minute — nothing leaves your browser.</p>
   </section>
 
   <!-- Wizard screen: one question at a time -->
   <section id="screen-wizard" class="screen" hidden>
-    <div id="step-content" aria-live="polite"></div>
-    <div class="wizard-nav">
-      <button type="button" id="back-btn">Back</button>
-      <button type="button" id="next-btn">Next</button>
+    <div class="wizard-progress">
+      <div class="wizard-progress-track"><div class="wizard-progress-fill" id="progress-fill"></div></div>
+      <p class="wizard-progress-label" id="progress-label"></p>
+    </div>
+
+    <div class="wizard-card">
+      <div id="step-content" aria-live="polite"></div>
+      <div class="wizard-nav">
+        <button type="button" id="back-btn" class="btn-secondary">Back</button>
+        <button type="button" id="next-btn" class="btn-primary">Next</button>
+      </div>
     </div>
   </section>
 
@@ -50,7 +58,7 @@
       <h1>Your plan</h1>
     </header>
     <div id="plan-output"></div>
-    <button type="button" id="start-over-btn">Start over</button>
+    <button type="button" id="start-over-btn" class="btn-secondary">Start over</button>
   </section>
 
   <footer>

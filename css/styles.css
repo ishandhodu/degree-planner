@@ -59,18 +59,45 @@ button {
   background: transparent;
   border: 1px solid var(--ink);
   border-radius: 0;
-  padding: 0.5rem 1.1rem;
+  padding: 0.6rem 1.2rem;
   cursor: pointer;
-}
-
-button:hover {
-  background: var(--band);
+  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--forest);
+  color: var(--paper);
+  border-color: var(--forest);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.btn-secondary {
   background: transparent;
+  color: var(--ink);
+  border-color: var(--band);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: var(--band);
+  border-color: var(--ink);
+}
+
+.btn-large {
+  font-size: 1.0625rem;
+  padding: 0.8rem 1.75rem;
 }
 
 input:focus-visible,
@@ -83,12 +110,20 @@ button:focus-visible {
 input[type="number"],
 select {
   font-family: var(--font-mono);
-  font-size: 1rem;
+  font-size: 1.0625rem;
   color: var(--ink);
   background: #fff;
   border: 1px solid var(--ink);
   border-radius: 0;
-  padding: 0.5rem 0.6rem;
+  padding: 0.65rem 0.75rem;
+  width: 100%;
+  max-width: 320px;
+  transition: border-color 0.15s ease;
+}
+
+input[type="number"]:focus,
+select:focus {
+  border-color: var(--forest);
 }
 
 input[type="number"].invalid {
@@ -111,42 +146,90 @@ input[type="number"].invalid {
 
 /* ---------- Landing screen ---------- */
 
-#screen-landing #start-btn {
-  background: var(--forest);
-  color: var(--paper);
-  border-color: var(--forest);
-  font-size: 1.0625rem;
-  padding: 0.65rem 1.4rem;
-  margin-top: 2rem;
+#screen-landing {
+  padding-top: 4rem;
 }
 
-#screen-landing #start-btn:hover {
-  background: var(--ink);
-  border-color: var(--ink);
+#screen-landing h1 {
+  font-size: 2.25rem;
+  max-width: 14ch;
+}
+
+#screen-landing #start-btn {
+  margin-top: 2.5rem;
+  display: block;
+}
+
+.landing-note {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--forest);
+  margin: 0.75rem 0 0;
 }
 
 .sample-ledger {
   border-top: 1px solid var(--ink);
   border-bottom: 1px solid var(--ink);
-  padding: 1rem 0;
+  padding: 1.25rem 0;
+  margin-top: 2.5rem;
   opacity: 0.85;
 }
 
 /* ---------- Wizard ---------- */
 
+#screen-wizard {
+  padding-top: 3.5rem;
+}
+
+.wizard-progress {
+  max-width: 480px;
+  margin: 0 auto 2rem;
+}
+
+.wizard-progress-track {
+  height: 3px;
+  background: var(--band);
+}
+
+.wizard-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--forest);
+  transition: width 0.3s ease;
+}
+
+.wizard-progress-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--forest);
+  margin: 0.6rem 0 0;
+}
+
+.wizard-card {
+  max-width: 480px;
+  margin: 0 auto;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  padding: 2.5rem 2rem;
+}
+
 .step-question {
   font-weight: 500;
-  font-size: 1.25rem;
-  margin: 0 0 1.25rem;
+  font-size: 1.4rem;
+  line-height: 1.35;
+  margin: 0 0 1.5rem;
 }
 
 .step-field {
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .step-field label {
   display: block;
-  margin-bottom: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--forest);
+  margin-bottom: 0.5rem;
 }
 
 .wizard-nav {
@@ -154,40 +237,181 @@ input[type="number"].invalid {
   justify-content: space-between;
   margin-top: 2rem;
   padding-top: 1.5rem;
+  border-top: 1px solid var(--band);
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+#step-content.step-anim {
+  animation: step-in 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #step-content.step-anim {
+    animation: none;
+  }
+}
+
+/* ---------- Semester list (one page, quick toggles) ---------- */
+
+.semester-list {
+  margin: 0 0 1rem;
+}
+
+.semester-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
   border-top: 1px solid var(--ink);
 }
 
-#next-btn {
+.semester-row:last-child {
+  border-bottom: 1px solid var(--ink);
+}
+
+.semester-row .sem-label {
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+}
+
+.flag-toggle {
+  display: flex;
+  border: 1px solid var(--ink);
+  flex-shrink: 0;
+}
+
+.flag-btn {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+}
+
+.flag-btn:last-child {
+  border-right: none;
+}
+
+.flag-btn:hover:not(.active) {
+  background: var(--band);
+}
+
+.flag-btn.active {
   background: var(--forest);
   color: var(--paper);
+}
+
+@media (max-width: 480px) {
+  .semester-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* ---------- Model picker (descriptive cards) ---------- */
+
+.model-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.model-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  border: 1px solid var(--ink);
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.model-option:hover {
+  background: var(--band);
+}
+
+.model-option.selected {
+  background: var(--band);
   border-color: var(--forest);
 }
 
-#next-btn:hover {
-  background: var(--ink);
-  border-color: var(--ink);
+.model-option input[type="radio"] {
+  margin-top: 0.3rem;
+  accent-color: var(--forest);
+  flex-shrink: 0;
+}
+
+.model-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.model-name {
+  font-family: var(--font-serif);
+  font-weight: 500;
+}
+
+.model-desc {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--ink);
+  opacity: 0.8;
+  line-height: 1.5;
 }
 
 /* ---------- Requirement checklist (its own wizard step) ---------- */
+
+.step-subtext {
+  font-size: 0.9rem;
+  opacity: 0.75;
+  margin: -0.75rem 0 1.25rem;
+}
 
 #requirement-checklist {
   list-style: none;
   padding: 0;
   margin: 0 0 1rem;
-  max-height: 50vh;
-  overflow-y: auto;
 }
 
 #requirement-checklist li {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0;
   border-top: 1px solid var(--ink);
 }
 
 #requirement-checklist li:last-child {
   border-bottom: 1px solid var(--ink);
+}
+
+#requirement-checklist .checklist-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  cursor: pointer;
+}
+
+#requirement-checklist input[type="checkbox"] {
+  width: 1.15rem;
+  height: 1.15rem;
+  accent-color: var(--forest);
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 #requirement-checklist .req-name {
@@ -202,14 +426,9 @@ input[type="number"].invalid {
   white-space: nowrap;
 }
 
-#requirement-checklist li.completed .req-name {
+#requirement-checklist li.done .req-name {
   text-decoration: line-through;
   opacity: 0.6;
-}
-
-#requirement-checklist li.in_progress .req-name {
-  font-style: italic;
-  color: var(--forest);
 }
 
 /* ---------- Plan ledger ---------- */

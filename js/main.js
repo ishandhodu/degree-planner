@@ -15,12 +15,32 @@ const CORE_REQUIREMENTS = [
   { id: 'FME1000', name: 'FME 1000 — Foundations of Management & Entrepreneurship', difficulty: 3.5, offered: 'both' },
   { id: 'STR3000', name: 'STR 3000 — Strategic Problem Solving', difficulty: 4.0, offered: 'both' },
   { id: 'WRT2000', name: 'WRT 2000 — Research Writing', difficulty: 5.0, offered: 'both' },
-  { id: 'CSP', name: 'CSP requirement (16 options)', difficulty: 4.0, offered: 'both' },
-  { id: 'HSS', name: 'HSS requirement (16 options)', difficulty: 3.0, offered: 'both' },
-  { id: 'LTA', name: 'LTA requirement (16 options)', difficulty: 2.0, offered: 'both' },
-  { id: 'NST', name: 'NST requirement (9 options)', difficulty: 4.0, offered: 'both' },
-  { id: 'SES', name: 'SES requirement (5 options)', difficulty: 5.0, offered: 'both' },
+  { id: 'FCI', name: 'FCI requirement', difficulty: 4.0, offered: 'both' },
+  { id: 'CSP', name: 'CSP requirement', difficulty: 4.0, offered: 'both' },
+  { id: 'HSS', name: 'HSS requirement', difficulty: 3.0, offered: 'both' },
+  { id: 'LTA', name: 'LTA requirement', difficulty: 2.0, offered: 'both' },
+  { id: 'NST', name: 'NST requirement', difficulty: 4.0, offered: 'both' },
+  { id: 'SES', name: 'SES requirement', difficulty: 5.0, offered: 'both' },
 ];
+
+const MODEL_INFO = {
+  A: {
+    name: 'A — Spread evenly',
+    desc: 'The same workload every semester. No ramp, no special treatment for any semester.',
+  },
+  B: {
+    name: 'B — Ramp up',
+    desc: "Lighter semesters now, heavier ones later. Eases you in, then picks up the pace as you go.",
+  },
+  C: {
+    name: 'C — Ramp down',
+    desc: 'Heavier semesters now, lighter ones later. Front-loads the harder work while your schedule is most flexible.',
+  },
+  D: {
+    name: 'D — Protect specific semesters',
+    desc: 'Keeps your study-abroad semester and your very last semester lighter than the rest.',
+  },
+};
 
 const YEAR_NAMES = ['Freshman', 'Sophomore', 'Junior', 'Senior'];
 
@@ -35,7 +55,7 @@ const MAX_PER_SEMESTER = 2;
 
 function defaultState() {
   return {
-    requirementStatus: {},
+    doneIds: [],
     currentYearIndex: 0,
     currentTerm: 'fall',
     futureSemesterCount: null,
@@ -53,8 +73,8 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
-function getStatus(id) {
-  return state.requirementStatus[id] || 'not_started';
+function isDone(id) {
+  return state.doneIds.includes(id);
 }
 
 let state = loadState();
@@ -164,16 +184,32 @@ function showScreen(name) {
 const stepContent = document.getElementById('step-content');
 const backBtn = document.getElementById('back-btn');
 const nextBtn = document.getElementById('next-btn');
+const progressFill = document.getElementById('progress-fill');
+const progressLabel = document.getElementById('progress-label');
 
 let currentIndex = 0;
 
 function renderChecklistInto(ul) {
   ul.innerHTML = '';
   CORE_REQUIREMENTS.forEach((req) => {
-    const status = getStatus(req.id);
+    const done = isDone(req.id);
 
     const item = document.createElement('li');
-    item.className = status !== 'not_started' ? status : '';
+    item.className = done ? 'done' : '';
+
+    const row = document.createElement('label');
+    row.className = 'checklist-row';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = done;
+    checkbox.addEventListener('change', () => {
+      state.doneIds = checkbox.checked
+        ? [...new Set([...state.doneIds, req.id])]
+        : state.doneIds.filter((id) => id !== req.id);
+      saveState();
+      renderChecklistInto(ul);
+    });
 
     const name = document.createElement('span');
     name.className = 'req-name';
@@ -183,25 +219,8 @@ function renderChecklistInto(ul) {
     difficulty.className = 'req-difficulty';
     difficulty.textContent = `diff ${req.difficulty.toFixed(1)}`;
 
-    const select = document.createElement('select');
-    [
-      ['not_started', 'Not started'],
-      ['in_progress', 'In progress'],
-      ['completed', 'Completed'],
-    ].forEach(([value, text]) => {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = text;
-      if (status === value) option.selected = true;
-      select.appendChild(option);
-    });
-    select.addEventListener('change', () => {
-      state.requirementStatus = { ...state.requirementStatus, [req.id]: select.value };
-      saveState();
-      renderChecklistInto(ul);
-    });
-
-    item.append(name, difficulty, select);
+    row.append(checkbox, name, difficulty);
+    item.appendChild(row);
     ul.appendChild(item);
   });
 }
@@ -209,7 +228,7 @@ function renderChecklistInto(ul) {
 const checklistStep = {
   id: 'checklist',
   render(container) {
-    container.innerHTML = '<p class="step-question">What have you completed, and what are you taking right now?</p><ul id="requirement-checklist"></ul>';
+    container.innerHTML = '<p class="step-question">Which core requirements have you already taken or are currently taking?</p><p class="step-subtext">Check a box if you\'ve taken it or are taking it now. Leave it unchecked if it\'s still ahead of you.</p><ul id="requirement-checklist"></ul>';
     renderChecklistInto(document.getElementById('requirement-checklist'));
   },
   onNext() {
@@ -280,65 +299,96 @@ const semesterCountStep = {
     state.futureSemesterCount = count;
     state.flags = Array.from({ length: count }, (_, i) => previousFlags[i] || 'normal');
     saveState();
-    rebuildFlagSteps(count);
     return true;
   },
 };
 
-function makeFlagStep(i) {
-  return {
-    id: `flag-${i}`,
-    render(container) {
-      const sem = buildFutureSemesters(state.futureSemesterCount, state.currentYearIndex, state.currentTerm, state.flags)[i];
-      container.innerHTML = `
-        <p class="step-question">${semesterLabel(sem)} — anything unusual?</p>
-        <div class="step-field">
-          <select id="flag-select">
-            <option value="normal">Normal semester</option>
-            <option value="abroad">Study abroad</option>
-            <option value="gap">Gap semester</option>
-          </select>
-        </div>`;
-      document.getElementById('flag-select').value = state.flags[i] || 'normal';
-    },
-    onNext() {
-      state.flags[i] = document.getElementById('flag-select').value;
-      saveState();
-      return true;
-    },
-  };
-}
+const semesterFlagsStep = {
+  id: 'semester-flags',
+  render(container) {
+    const count = state.futureSemesterCount || 0;
 
-function rebuildFlagSteps(count) {
-  const anchor = steps.findIndex((s) => s.id === 'semester-count');
-  while (steps[anchor + 1] && steps[anchor + 1].id.startsWith('flag-')) {
-    steps.splice(anchor + 1, 1);
-  }
-  const flagSteps = [];
-  for (let i = 0; i < count; i++) flagSteps.push(makeFlagStep(i));
-  steps.splice(anchor + 1, 0, ...flagSteps);
-}
+    if (count === 0) {
+      container.innerHTML = '<p class="step-question">No semesters to configure</p><p>You said there are no semesters left after this one, so there\'s nothing to flag.</p>';
+      return;
+    }
+
+    const semesters = buildFutureSemesters(count, state.currentYearIndex, state.currentTerm, state.flags);
+    const rows = semesters
+      .map((sem, i) => {
+        const buttons = ['normal', 'abroad', 'gap']
+          .map((value) => {
+            const text = value === 'normal' ? 'Normal' : value === 'abroad' ? 'Abroad' : 'Gap';
+            const active = sem.flag === value ? ' active' : '';
+            return `<button type="button" class="flag-btn${active}" data-index="${i}" data-value="${value}">${text}</button>`;
+          })
+          .join('');
+        return `<div class="semester-row">
+          <span class="sem-label">${semesterLabel(sem)}</span>
+          <div class="flag-toggle">${buttons}</div>
+        </div>`;
+      })
+      .join('');
+
+    container.innerHTML = `
+      <p class="step-question">Anything unusual in any of these semesters?</p>
+      <p class="step-subtext">Flag a semester as "Abroad" or "Gap" if it won't carry a normal course load. Leave the rest as Normal.</p>
+      <div class="semester-list">${rows}</div>`;
+
+    container.querySelectorAll('.flag-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.index);
+        state.flags[i] = btn.dataset.value;
+        saveState();
+        container.querySelectorAll(`.flag-btn[data-index="${i}"]`).forEach((b) => {
+          b.classList.toggle('active', b.dataset.value === btn.dataset.value);
+        });
+      });
+    });
+  },
+  onNext() {
+    return true;
+  },
+};
 
 const modelStep = {
   id: 'model',
   render(container) {
     const hasAbroad = state.flags.includes('abroad');
     const suggested = hasAbroad ? 'D' : 'A';
+
+    const options = ['A', 'B', 'C', 'D']
+      .map((key) => {
+        const checked = (state.selectedModel || suggested) === key ? ' checked' : '';
+        return `<label class="model-option">
+          <input type="radio" name="model" value="${key}"${checked}>
+          <div class="model-option-body">
+            <span class="model-name">${MODEL_INFO[key].name}</span>
+            <span class="model-desc">${MODEL_INFO[key].desc}</span>
+          </div>
+        </label>`;
+      })
+      .join('');
+
     container.innerHTML = `
-      <p class="step-question">Which scheduling model?</p>
-      <div class="step-field">
-        <select id="model-select">
-          <option value="A">A — Spread evenly</option>
-          <option value="B">B — Ramp up</option>
-          <option value="C">C — Ramp down</option>
-          <option value="D">D — Protect specific semesters</option>
-        </select>
-      </div>
-      <p class="step-hint">Suggested: Model ${suggested}${hasAbroad ? ' — you flagged a study-abroad semester' : ''}</p>`;
-    document.getElementById('model-select').value = state.selectedModel || suggested;
+      <p class="step-question">Which scheduling model fits you?</p>
+      <p class="step-hint">Suggested: Model ${suggested}${hasAbroad ? ' — you flagged a study-abroad semester' : ''}</p>
+      <div class="model-options">${options}</div>`;
+
+    container.querySelectorAll('input[name="model"]').forEach((input) => {
+      input.addEventListener('change', () => {
+        container.querySelectorAll('.model-option').forEach((label) => {
+          label.classList.toggle('selected', label.querySelector('input').checked);
+        });
+      });
+    });
+    container.querySelectorAll('.model-option').forEach((label) => {
+      label.classList.toggle('selected', label.querySelector('input').checked);
+    });
   },
   onNext() {
-    state.selectedModel = document.getElementById('model-select').value;
+    const checked = document.querySelector('input[name="model"]:checked');
+    if (checked) state.selectedModel = checked.value;
     saveState();
     return true;
   },
@@ -359,13 +409,25 @@ const confirmStep = {
   },
 };
 
-const steps = [checklistStep, yearTermStep, semesterCountStep, modelStep, confirmStep];
+const steps = [checklistStep, yearTermStep, semesterCountStep, semesterFlagsStep, modelStep, confirmStep];
 
 function renderStep() {
   const step = steps[currentIndex];
   step.render(stepContent);
   backBtn.disabled = currentIndex === 0;
   nextBtn.textContent = step.isFinal ? 'Generate my plan' : 'Next';
+
+  const position = currentIndex + 1;
+  const total = steps.length;
+  progressFill.style.width = `${(position / total) * 100}%`;
+  progressLabel.textContent = `Step ${position} of ${total}`;
+
+  stepContent.classList.remove('step-anim');
+  void stepContent.offsetWidth;
+  stepContent.classList.add('step-anim');
+
+  const firstField = stepContent.querySelector('select, input, button');
+  if (firstField) firstField.focus();
 }
 
 backBtn.addEventListener('click', () => {
@@ -383,6 +445,16 @@ nextBtn.addEventListener('click', () => {
   renderStep();
 });
 
+stepContent.addEventListener('keydown', (event) => {
+  if (event.key !== 'Enter') return;
+  const step = steps[currentIndex];
+  if (step.id === 'checklist') return;
+  if (event.target.tagName === 'SELECT' || event.target.tagName === 'INPUT') {
+    event.preventDefault();
+    nextBtn.click();
+  }
+});
+
 // --- Plan screen ---
 const planOutput = document.getElementById('plan-output');
 
@@ -398,31 +470,14 @@ function renderCurrentSemesterBand() {
   label.textContent = semesterLabel(currentSemesterInfo());
   const tag = document.createElement('span');
   tag.className = 'flag-tag';
-  tag.textContent = '— current semester, locked';
+  tag.textContent = '— current semester';
   label.appendChild(tag);
   head.appendChild(label);
   band.appendChild(head);
 
-  const inProgress = CORE_REQUIREMENTS.filter((r) => getStatus(r.id) === 'in_progress');
-
-  if (inProgress.length === 0) {
-    const note = document.createElement('p');
-    note.textContent = 'Nothing marked as in progress this semester.';
-    band.appendChild(note);
-  } else {
-    const list = document.createElement('ul');
-    list.className = 'band-items';
-    inProgress.forEach((req) => {
-      const li = document.createElement('li');
-      const name = document.createElement('span');
-      name.textContent = req.name;
-      const diff = document.createElement('span');
-      diff.textContent = `diff ${req.difficulty.toFixed(1)}`;
-      li.append(name, diff);
-      list.appendChild(li);
-    });
-    band.appendChild(list);
-  }
+  const note = document.createElement('p');
+  note.textContent = 'Planning starts the semester after this one.';
+  band.appendChild(note);
 
   return band;
 }
@@ -522,14 +577,14 @@ function animateBar(fillEl, targetPercent, index) {
 }
 
 function generateAndShowPlan() {
-  const remaining = CORE_REQUIREMENTS.filter((r) => getStatus(r.id) === 'not_started');
+  const remaining = CORE_REQUIREMENTS.filter((r) => !isDone(r.id));
   const semesters = buildFutureSemesters(state.futureSemesterCount, state.currentYearIndex, state.currentTerm, state.flags);
 
   if (remaining.length === 0) {
     planOutput.innerHTML = '';
     planOutput.appendChild(renderCurrentSemesterBand());
     const note = document.createElement('p');
-    note.textContent = 'Every requirement is already marked in progress or completed — nothing left to schedule.';
+    note.textContent = 'Every requirement is already marked as taken or in progress — nothing left to schedule.';
     planOutput.appendChild(note);
   } else {
     const plan = generatePlan(remaining, semesters, state.selectedModel);
@@ -549,7 +604,6 @@ document.getElementById('start-btn').addEventListener('click', () => {
 document.getElementById('start-over-btn').addEventListener('click', () => {
   state = defaultState();
   saveState();
-  rebuildFlagSteps(0);
   currentIndex = 0;
   showScreen('landing');
 });

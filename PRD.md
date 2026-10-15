@@ -35,14 +35,14 @@ Difficulty is 1–5 (one decimal place, matching the real portal data — e.g. 4
 
 **State (JS variables, saved to `localStorage`):**
 
-- `requirementStatus`: a map of requirement ID → `"not_started"` | `"in_progress"` | `"completed"`. Replaces a plain completed/not-completed flag so the tool can tell "already done" apart from "currently taking this term."
+- `doneIds`: array of requirement IDs the student has checked — taken or currently taking, either way excluded from scheduling. (Originally a three-state status distinguishing "in progress" from "completed"; simplified to a single checkbox per the required-question commit below — a three-way control tested as more confusing than useful for a 20-item list.)
 - `currentYearIndex` / `currentTerm`: the student's current class year (0 = Freshman … 3 = Senior) and term (`"fall"` | `"spring"`), used to compute every semester label going forward.
 - `futureSemesterCount`: how many semesters remain **after** the current one.
 - `flags`: per-future-semester array of `"normal"` | `"abroad"` | `"gap"`.
 - `selectedModel`: one of `"A"`, `"B"`, `"C"`, `"D"`.
 - `plan`: the generated output — which requirement is assigned to which future semester, and any requirement that couldn't be placed.
 
-**The current semester is locked, not scheduled.** Requirements marked `"in_progress"` belong to the current semester and are shown there as already-decided — the algorithm never touches them and never enforces a difficulty cap on that semester, since it's real and already happening. Only `"not_started"` requirements are handed to `generatePlan`, and only into the semesters that come after the current one.
+**The current semester is shown, not scheduled.** The plan always opens with a line naming the current semester and noting that planning starts the semester after it — but it no longer lists specific in-progress courses there, since a single checkbox can't distinguish "taken last year" from "taking this very term." Only requirements with `doneIds` excluded are handed to `generatePlan`, and only into the semesters after the current one.
 
 ## Scheduling logic
 
@@ -67,20 +67,29 @@ Anything left unassigned after all semesters are filled is flagged in the output
 
 Every semester — current and future — is labeled by class year + term (e.g. "Sophomore Spring"), computed forward from `currentYearIndex`/`currentTerm`. Past Senior year, the label falls back to "Year 5", "Year 6", etc. rather than breaking.
 
+## Interface: landing page + one-question-at-a-time wizard
+
+The tool is three screens, not one scrolling form:
+
+1. **Landing page** — what the tool does, a sample ledger row for a preview, and a "Build my plan" button.
+2. **Wizard** — one question per screen, with a progress bar, Back/Next, autofocus, and Enter-to-continue: the requirement checklist, current year/term, how many semesters remain, a single page listing every remaining semester with a 3-way Normal/Abroad/Gap toggle (tested as one screen per semester first — see required-question commit below — but that was changed back to one page after user testing showed it created more clicks than clarity for someone with several semesters left), the model choice (four descriptive cards, not a bare dropdown, so the trade-offs are visible before picking), and a final "Ready to build your plan?" confirmation.
+3. **Plan screen** — reached only via "Generate my plan", separate from the wizard.
+
 ## States
 
-- **Empty:** First visit. Shows the full core requirement list, each with a status control (Not started / In progress / Completed — none set), a setup form (current year + term; how many future semesters remain; per-future-semester abroad/gap flags; model dropdown, defaulted by rule — see below), and a "Generate Plan" button. The plan area shows placeholder text: "Mark what you've completed and what you're taking now, set up your remaining semesters, then generate your plan."
-- **Invalid input:** Triggered by: future-semester count that's negative, blank, or not a whole number; or every requirement already marked completed (nothing left to schedule — "in progress" doesn't count as nothing-left, since it's already real work). Message appears inline directly under the relevant field, the Generate button does nothing until it's fixed, and nothing else on the page resets.
-- **In use:** After a valid "Generate Plan" click — the current semester appears first, labeled and showing whatever's marked "in progress" with no cap or budget bar (it's locked, not scheduled). Then each future semester: label, flag (if any), assigned requirement(s) with difficulty, and a running difficulty total against its cap. A separate "Couldn't be scheduled" section lists anything left over, if any.
-- **After a reset:** "Reset" clears `requirementStatus`, `currentYearIndex`/`currentTerm`, `futureSemesterCount`, `flags`, `selectedModel`, and `plan` back to defaults and returns to the Empty state, without a page reload.
+- **Empty:** Landing page, before "Build my plan" is clicked.
+- **Invalid input:** Triggered by: future-semester count that's negative, blank, or not a whole number; or every requirement already checked (nothing left to schedule). Message appears inline directly under the field, and the wizard won't advance past it until it's fixed.
+- **In use:** The wizard steps themselves, each holding its own state until "Generate my plan" is clicked.
+- **Plan generated:** The current semester is named first (no item list, no cap — see above), then each future semester with its flag, assigned requirements, and a running difficulty total against its cap, animated filling in. A "Couldn't be scheduled" section lists anything left over.
+- **After a reset:** "Start over" clears all state back to defaults and returns to the landing page, without a page reload.
 
-**Default model suggestion (rule-based, not live AI):** if the student flags any semester as study-abroad, default the dropdown to Model D; otherwise default to Model A. The student can always override it from the dropdown.
+**Default model suggestion (rule-based, not live AI):** if the student flags any semester as study-abroad, default the model choice to D; otherwise default to A. The student can always pick a different card.
 
 ## Functional requirements
 
-- State held in JS (`requirementStatus`, current year/term, `futureSemesterCount`, `flags`, `selectedModel`, `plan`), read and changed by more than one interaction.
+- State held in JS (`doneIds`, current year/term, `futureSemesterCount`, `flags`, `selectedModel`, `plan`), read and changed by more than one interaction.
 - Output worked out from that state (the generated plan, per-semester difficulty totals, unscheduled flags) — not an echo of input.
-- At least three kinds of interaction: per-requirement status selects, number input + year/term selects (setup), dropdowns (per-semester flags, model selection), and buttons (Generate, Reset).
+- At least three kinds of interaction: checkboxes (requirement list), number input + dropdowns (setup), toggle buttons (per-semester flags), radio cards (model), and buttons (Next/Back, Generate, Reset).
 - Page updates itself on every change — no `alert()`.
 - Invalid input shown inline, tool keeps working.
 - Reset returns to Empty state without reloading the page.
