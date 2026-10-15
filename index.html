@@ -49,13 +49,28 @@
     </div>
   </section>
 
-  <!-- Plan screen -->
+  <!-- Plan screen: horizontal card timeline -->
   <section id="screen-plan" class="screen" hidden>
-    <header>
-      <h1>Your plan</h1>
-    </header>
-    <div id="plan-output"></div>
-    <button type="button" id="start-over-btn" class="btn-secondary">Start over</button>
+    <div class="plan-header">
+      <div class="plan-header-left">
+        <h1>Your plan</h1>
+        <p class="plan-summary" id="plan-summary"></p>
+      </div>
+      <div class="plan-nav-btns">
+        <button type="button" id="plan-scroll-left" class="btn-secondary plan-nav-btn" aria-label="Scroll left">&larr;</button>
+        <button type="button" id="plan-scroll-right" class="btn-secondary plan-nav-btn" aria-label="Scroll right">&rarr;</button>
+      </div>
+    </div>
+    <div class="plan-scroller" id="plan-scroller">
+      <div class="plan-track" id="plan-track"></div>
+    </div>
+    <div class="plan-footer">
+      <div class="plan-footer-left">
+        <button type="button" id="start-over-btn" class="btn-secondary">Start over</button>
+        <button type="button" id="replay-btn" class="btn-text">Replay</button>
+      </div>
+      <p class="plan-footer-copyright">&copy; 2026 Ishan Dhodapkar</p>
+    </div>
   </section>
 
   <footer>

@@ -178,6 +178,7 @@ function showScreen(name) {
   Object.entries(screens).forEach(([key, el]) => {
     el.hidden = key !== name;
   });
+  document.body.classList.toggle('plan-active', name === 'plan');
 }
 
 // --- Wizard engine ---
@@ -455,144 +456,452 @@ stepContent.addEventListener('keydown', (event) => {
   }
 });
 
-// --- Plan screen ---
-const planOutput = document.getElementById('plan-output');
+// --- Plan screen: horizontal card timeline ---
+const planTrack = document.getElementById('plan-track');
+const planSummaryEl = document.getElementById('plan-summary');
+const planScroller = document.getElementById('plan-scroller');
 
-function renderCurrentSemesterBand() {
-  const band = document.createElement('div');
-  band.className = 'semester-band current';
+const SLOT_COUNT = 4;
+
+function loadColorFor(ratio) {
+  if (ratio > 1) return 'var(--brick)';
+  if (ratio >= 0.8) return 'var(--mustard)';
+  return 'var(--forest)';
+}
+
+function courseShortName(req) {
+  return req.name.replace(/^[A-Z]{2,4}\s?\d{3,4}\s?—\s?/, '');
+}
+
+function buildSemesterColumn(entry) {
+  const { sem, cap, items, total } = entry;
+  const isCurrent = sem.flag === 'current';
+  const isGap = sem.flag === 'gap';
+  const isAbroad = sem.flag === 'abroad';
+  const isGhostEligible = !isCurrent && !isGap;
+
+  const column = document.createElement('div');
+  column.className = 'plan-column';
+
+  const marker = document.createElement('div');
+  marker.className = 'plan-marker';
+  const dot = document.createElement('span');
+  dot.className = 'plan-dot' + (isCurrent ? ' current' : '') + (isGap ? ' gap' : '');
+  const yearLbl = document.createElement('span');
+  yearLbl.className = 'plan-year-label';
+  yearLbl.textContent = yearLabel(sem.yearIndex).toUpperCase();
+  marker.append(dot, yearLbl);
+  column.appendChild(marker);
+
+  const card = document.createElement('div');
+  card.className = 'plan-card' + (isCurrent ? ' current' : '') + (isGap ? ' gap' : '');
 
   const head = document.createElement('div');
-  head.className = 'semester-head';
+  head.className = 'plan-card-head';
 
-  const label = document.createElement('span');
-  label.className = 'label';
-  label.textContent = semesterLabel(currentSemesterInfo());
-  const tag = document.createElement('span');
-  tag.className = 'flag-tag';
-  tag.textContent = '— current semester';
-  label.appendChild(tag);
-  head.appendChild(label);
-  band.appendChild(head);
+  const headRow = document.createElement('div');
+  headRow.className = 'plan-card-head-row';
+  const term = document.createElement('span');
+  term.className = 'plan-term';
+  term.textContent = termLabel(sem.term);
+  const ratio = document.createElement('span');
+  ratio.className = 'plan-ratio';
+  ratio.textContent = isCurrent || isGap ? '—' : `${total.toFixed(1)} / ${cap}`;
+  headRow.append(term, ratio);
+  head.appendChild(headRow);
 
-  const note = document.createElement('p');
-  note.textContent = 'Planning starts the semester after this one.';
-  band.appendChild(note);
+  const barTrack = document.createElement('div');
+  barTrack.className = 'plan-bar-track';
+  const segmentEls = [];
+  let ghostEl = null;
+  if (isGhostEligible) {
+    const baseColor = loadColorFor(cap > 0 ? total / cap : 0);
+    items.forEach((item) => {
+      const seg = document.createElement('div');
+      seg.className = 'plan-bar-segment';
+      seg.dataset.targetWidth = String((item.difficulty / cap) * 100);
+      seg.style.width = '0%';
+      seg.style.background = baseColor;
+      barTrack.appendChild(seg);
+      segmentEls.push(seg);
+    });
+    ghostEl = document.createElement('div');
+    ghostEl.className = 'plan-bar-ghost';
+    barTrack.appendChild(ghostEl);
+  }
+  head.appendChild(barTrack);
 
-  return band;
+  const tag = document.createElement('p');
+  tag.className = 'plan-tag';
+  let defaultTagText = '';
+  let defaultTagColor = '';
+  if (isCurrent) {
+    defaultTagText = 'you are here';
+    defaultTagColor = 'var(--forest)';
+  } else if (isGap) {
+    defaultTagText = 'gap semester · no courses';
+  } else if (isAbroad) {
+    defaultTagText = '— study abroad';
+    defaultTagColor = 'var(--forest)';
+  }
+  tag.textContent = defaultTagText;
+  tag.style.color = defaultTagColor;
+  head.appendChild(tag);
+
+  card.appendChild(head);
+
+  const slots = document.createElement('div');
+  slots.className = 'plan-slots';
+  const rowEls = [];
+  for (let i = 0; i < SLOT_COUNT; i++) {
+    const row = document.createElement('div');
+    row.className = 'plan-slot';
+    const left = document.createElement('div');
+    left.className = 'plan-slot-left';
+    const code = document.createElement('span');
+    code.className = 'plan-slot-code';
+    const name = document.createElement('span');
+    name.className = 'plan-slot-name';
+    left.append(code, name);
+    const right = document.createElement('span');
+    right.className = 'plan-slot-credits';
+
+    const item = items[i];
+    if (item) {
+      code.textContent = item.id;
+      name.textContent = courseShortName(item);
+      right.textContent = `diff ${item.difficulty.toFixed(1)}`;
+
+      const segEl = segmentEls[i];
+      row.addEventListener('mouseenter', () => {
+        rowEls.forEach((r) => {
+          if (r !== row) r.style.opacity = '0.45';
+        });
+        row.style.background = 'var(--band-light)';
+        segmentEls.forEach((s) => {
+          s.style.opacity = s === segEl ? '1' : '0.25';
+        });
+      });
+      row.addEventListener('mouseleave', () => {
+        rowEls.forEach((r) => {
+          r.style.opacity = '';
+        });
+        row.style.background = '';
+        segmentEls.forEach((s) => {
+          s.style.opacity = '';
+        });
+      });
+    } else {
+      name.textContent = isCurrent ? '—' : '(elective)';
+      name.classList.add('empty');
+    }
+
+    row.append(left, right);
+    slots.appendChild(row);
+    rowEls.push(row);
+  }
+  card.appendChild(slots);
+
+  const foot = document.createElement('div');
+  foot.className = 'plan-card-foot';
+  const placed = document.createElement('span');
+  placed.textContent = `${items.length} of ${SLOT_COUNT} placed`;
+  const totalEl = document.createElement('span');
+  totalEl.textContent = isCurrent || isGap ? '' : `${total.toFixed(1)} difficulty`;
+  foot.append(placed, totalEl);
+  card.appendChild(foot);
+
+  column.appendChild(card);
+
+  if (isGhostEligible) {
+    card.addEventListener('mouseenter', () => {
+      tag.textContent = `${(cap - total).toFixed(1)} difficulty open`;
+      tag.style.color = 'var(--muted)';
+    });
+    card.addEventListener('mouseleave', () => {
+      tag.textContent = defaultTagText;
+      tag.style.color = defaultTagColor;
+    });
+  }
+
+  return {
+    columnEl: column,
+    dotEl: dot,
+    segmentEls,
+    ghostEl,
+    ratioEl: ratio,
+    tagEl: tag,
+    barTrackEl: barTrack,
+    cap,
+    baseUsed: total,
+    rowEls,
+    defaultTagText,
+    defaultTagColor,
+    isGhostEligible,
+  };
 }
 
-function renderPlan(plan) {
-  planOutput.innerHTML = '';
-  planOutput.appendChild(renderCurrentSemesterBand());
+function applyGhostPreview(ref, req) {
+  if (!ref.isGhostEligible) return;
+  const nu = ref.baseUsed + req.difficulty;
+  const ratio = ref.cap > 0 ? nu / ref.cap : 0;
+  const over = ratio > 1;
 
-  plan.assignments.forEach((a) => {
-    const band = document.createElement('div');
-    band.className = 'semester-band' + (a.sem.flag === 'gap' ? ' gap' : '');
-
-    const head = document.createElement('div');
-    head.className = 'semester-head';
-
-    const label = document.createElement('span');
-    label.className = 'label';
-    label.textContent = semesterLabel(a.sem);
-    if (a.sem.flag !== 'normal') {
-      const tag = document.createElement('span');
-      tag.className = 'flag-tag';
-      tag.textContent = a.sem.flag === 'abroad' ? '— study abroad' : '— gap semester';
-      label.appendChild(tag);
-    }
-    head.appendChild(label);
-
-    if (a.sem.flag !== 'gap') {
-      const ratioText = document.createElement('span');
-      ratioText.textContent = `${a.total.toFixed(1)} / ${a.cap}`;
-      head.appendChild(ratioText);
-    }
-
-    band.appendChild(head);
-
-    if (a.sem.flag !== 'gap') {
-      const track = document.createElement('div');
-      track.className = 'bar-track';
-      const fill = document.createElement('div');
-      fill.className = 'bar-fill';
-      const ratio = a.cap > 0 ? a.total / a.cap : 0;
-      if (ratio > 1) fill.classList.add('over');
-      else if (ratio >= 0.8) fill.classList.add('warn');
-      track.appendChild(fill);
-      band.appendChild(track);
-
-      const list = document.createElement('ul');
-      list.className = 'band-items';
-      a.items.forEach((req) => {
-        const li = document.createElement('li');
-        const name = document.createElement('span');
-        name.textContent = req.name;
-        const diff = document.createElement('span');
-        diff.textContent = `diff ${req.difficulty.toFixed(1)}`;
-        li.append(name, diff);
-        list.appendChild(li);
-      });
-      band.appendChild(list);
-
-      animateBar(fill, Math.min(100, ratio * 100), a.index);
-    } else {
-      const note = document.createElement('p');
-      note.textContent = 'No courses this semester.';
-      band.appendChild(note);
-    }
-
-    planOutput.appendChild(band);
+  ref.ratioEl.textContent = `${nu.toFixed(1)} / ${ref.cap}`;
+  ref.ratioEl.style.color = over ? 'var(--brick)' : '';
+  ref.segmentEls.forEach((s) => {
+    s.style.background = 'var(--ghost-seg)';
   });
 
-  if (plan.unscheduled.length > 0) {
-    const unscheduled = document.createElement('div');
-    unscheduled.id = 'unscheduled';
+  const ghostPct = ref.cap > 0 ? (Math.max(0, Math.min(req.difficulty, ref.cap - ref.baseUsed)) / ref.cap) * 100 : 0;
+  const color = loadColorFor(ratio);
+  ref.ghostEl.style.width = `${ghostPct}%`;
+  ref.ghostEl.style.background = `repeating-linear-gradient(135deg, ${color} 0 3px, transparent 3px 6px)`;
+  ref.barTrackEl.style.boxShadow = over ? 'inset 0 0 0 1px var(--brick)' : '';
 
-    const heading = document.createElement('h3');
-    heading.textContent = "Couldn't be scheduled";
-    unscheduled.appendChild(heading);
-
-    const list = document.createElement('ul');
-    plan.unscheduled.forEach((req) => {
-      const li = document.createElement('li');
-      li.textContent = `${req.name} (diff ${req.difficulty.toFixed(1)})`;
-      list.appendChild(li);
-    });
-    unscheduled.appendChild(list);
-    planOutput.appendChild(unscheduled);
-  }
+  ref.tagEl.textContent = over
+    ? `${req.id} would put this over by ${(nu - ref.cap).toFixed(1)}`
+    : `${req.id} fits here`;
+  ref.tagEl.style.color = over ? 'var(--brick)' : 'var(--forest)';
 }
 
-function animateBar(fillEl, targetPercent, index) {
+function resetGhostPreview(ref) {
+  if (!ref.isGhostEligible) return;
+  ref.ratioEl.textContent = `${ref.baseUsed.toFixed(1)} / ${ref.cap}`;
+  ref.ratioEl.style.color = '';
+  const baseColor = loadColorFor(ref.cap > 0 ? ref.baseUsed / ref.cap : 0);
+  ref.segmentEls.forEach((s) => {
+    s.style.background = baseColor;
+  });
+  ref.ghostEl.style.width = '0';
+  ref.barTrackEl.style.boxShadow = '';
+  ref.tagEl.textContent = ref.defaultTagText;
+  ref.tagEl.style.color = ref.defaultTagColor;
+}
+
+function buildUnscheduledColumn(unscheduled, ghostTargets) {
+  const column = document.createElement('div');
+  column.className = 'plan-column plan-unscheduled-column';
+
+  const marker = document.createElement('div');
+  marker.className = 'plan-marker';
+  const dot = document.createElement('span');
+  dot.className = 'plan-dot diamond';
+  const label = document.createElement('span');
+  label.className = 'plan-year-label brick';
+  label.textContent = 'UNPLACED';
+  marker.append(dot, label);
+  column.appendChild(marker);
+
+  const card = document.createElement('div');
+  card.className = 'plan-card plan-unscheduled-card';
+
+  const head = document.createElement('div');
+  head.className = 'plan-card-head';
+  const headRow = document.createElement('div');
+  headRow.className = 'plan-card-head-row';
+  const title = document.createElement('span');
+  title.className = 'plan-unscheduled-title';
+  title.textContent = "Couldn't be scheduled";
+  const count = document.createElement('span');
+  count.className = 'plan-unscheduled-count';
+  count.textContent = String(unscheduled.length);
+  headRow.append(title, count);
+  head.appendChild(headRow);
+  const hint = document.createElement('p');
+  hint.className = 'plan-tag';
+  hint.textContent = 'Hover one to preview it in each semester.';
+  head.appendChild(hint);
+  card.appendChild(head);
+
+  const list = document.createElement('div');
+  list.className = 'plan-unscheduled-list';
+  unscheduled.forEach((req) => {
+    const row = document.createElement('div');
+    row.className = 'plan-unscheduled-row';
+    const left = document.createElement('div');
+    left.className = 'plan-slot-left';
+    const code = document.createElement('span');
+    code.className = 'plan-slot-code';
+    code.textContent = req.id;
+    const name = document.createElement('span');
+    name.className = 'plan-slot-name ellipsis';
+    name.textContent = courseShortName(req);
+    left.append(code, name);
+    const diff = document.createElement('span');
+    diff.className = 'plan-slot-credits';
+    diff.textContent = `diff ${req.difficulty.toFixed(1)}`;
+    row.append(left, diff);
+
+    row.addEventListener('mouseenter', () => {
+      ghostTargets.forEach((ref) => applyGhostPreview(ref, req));
+    });
+    row.addEventListener('mouseleave', () => {
+      ghostTargets.forEach((ref) => resetGhostPreview(ref));
+    });
+
+    list.appendChild(row);
+  });
+  card.appendChild(list);
+  column.appendChild(card);
+
+  return { columnEl: column, dotEl: dot, segmentEls: [], rowEls: [], ratioEl: null };
+}
+
+function easeOutCubic(x) {
+  const c = Math.min(1, Math.max(0, x));
+  return 1 - Math.pow(1 - c, 3);
+}
+
+function applyColumnFrame(col, pCard, pDot) {
+  col.columnEl.style.opacity = String(pCard);
+  col.columnEl.style.transform = `translateY(${(1 - pCard) * 18}px)`;
+  col.dotEl.style.transform = `scale(${(0.4 + 0.6 * pDot).toFixed(3)})${col.dotEl.classList.contains('diamond') ? ' rotate(45deg)' : ''}`;
+  col.segmentEls.forEach((seg) => {
+    seg.style.width = `${Number(seg.dataset.targetWidth) * pCard}%`;
+  });
+  if (col.ratioEl && col.baseUsed != null && col.cap > 0) {
+    col.ratioEl.textContent = `${(col.baseUsed * pCard).toFixed(1)} / ${col.cap}`;
+  }
+  col.rowEls.forEach((row) => {
+    row.style.opacity = String(pCard);
+  });
+}
+
+let planAnimFrame = null;
+let lastPlanColumns = [];
+let lastSpineFill = null;
+
+function animatePlanLoad(columns, spineFillEl) {
+  if (planAnimFrame) cancelAnimationFrame(planAnimFrame);
+
   const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (prefersReducedMotion) {
-    fillEl.style.width = `${targetPercent}%`;
+    columns.forEach((col) => applyColumnFrame(col, 1, 1));
+    spineFillEl.style.width = '100%';
     return;
   }
-  setTimeout(() => {
-    fillEl.style.width = `${targetPercent}%`;
-  }, index * 80);
+
+  const n = columns.length;
+  const start = performance.now();
+  const duration = n * 130 + 1600;
+
+  function frame(now) {
+    const t = now - start;
+    columns.forEach((col, i) => {
+      const pCard = easeOutCubic((t - 150 - i * 130) / 650);
+      const pDot = easeOutCubic((t - 150 - i * 130) / 350);
+      applyColumnFrame(col, pCard, pDot);
+    });
+    const spineP = easeOutCubic((t - 100) / (n * 130 + 800));
+    spineFillEl.style.width = `${spineP * 100}%`;
+
+    if (t < duration) {
+      planAnimFrame = requestAnimationFrame(frame);
+    } else {
+      columns.forEach((col) => applyColumnFrame(col, 1, 1));
+      spineFillEl.style.width = '100%';
+      planAnimFrame = null;
+    }
+  }
+  planAnimFrame = requestAnimationFrame(frame);
+}
+
+function replayCurrentPlan() {
+  if (!lastSpineFill) return;
+  lastPlanColumns.forEach((col) => applyColumnFrame(col, 0, 0));
+  lastSpineFill.style.width = '0%';
+  requestAnimationFrame(() => animatePlanLoad(lastPlanColumns, lastSpineFill));
+}
+
+function renderPlanTimeline(plan) {
+  planTrack.innerHTML = '';
+
+  const spineBg = document.createElement('div');
+  spineBg.className = 'plan-spine-bg';
+  const spineFill = document.createElement('div');
+  spineFill.className = 'plan-spine-fill';
+  planTrack.append(spineBg, spineFill);
+
+  const currentEntry = {
+    sem: { yearIndex: state.currentYearIndex, term: state.currentTerm, flag: 'current' },
+    cap: 0,
+    items: [],
+    total: 0,
+  };
+
+  const entries = [
+    currentEntry,
+    ...plan.assignments.map((a) => ({ sem: a.sem, cap: a.cap, items: a.items, total: a.total })),
+  ];
+
+  const columnRefs = entries.map((entry) => buildSemesterColumn(entry));
+  columnRefs.forEach((col) => planTrack.appendChild(col.columnEl));
+
+  let unscheduledCol = null;
+  if (plan.unscheduled.length > 0) {
+    const sorted = [...plan.unscheduled].sort((a, b) => b.difficulty - a.difficulty);
+    const ghostTargets = columnRefs.filter((c) => c.isGhostEligible);
+    unscheduledCol = buildUnscheduledColumn(sorted, ghostTargets);
+    planTrack.appendChild(unscheduledCol.columnEl);
+  }
+
+  const allColumns = unscheduledCol ? [...columnRefs, unscheduledCol] : columnRefs;
+
+  const semesterCount = plan.assignments.length;
+  const placedCount = plan.assignments.reduce((sum, a) => sum + a.items.length, 0);
+  const unplacedCount = plan.unscheduled.length;
+  planSummaryEl.innerHTML =
+    `<span>${semesterCount} semester${semesterCount === 1 ? '' : 's'} planned</span>` +
+    `<span>${placedCount} course${placedCount === 1 ? '' : 's'} placed</span>` +
+    (unplacedCount > 0 ? `<span class="brick">${unplacedCount} couldn't fit</span>` : '');
+
+  lastPlanColumns = allColumns;
+  lastSpineFill = spineFill;
+  animatePlanLoad(allColumns, spineFill);
 }
 
 function generateAndShowPlan() {
   const remaining = CORE_REQUIREMENTS.filter((r) => !isDone(r.id));
   const semesters = buildFutureSemesters(state.futureSemesterCount, state.currentYearIndex, state.currentTerm, state.flags);
 
-  if (remaining.length === 0) {
-    planOutput.innerHTML = '';
-    planOutput.appendChild(renderCurrentSemesterBand());
-    const note = document.createElement('p');
-    note.textContent = 'Every requirement is already marked as taken or in progress — nothing left to schedule.';
-    planOutput.appendChild(note);
-  } else {
-    const plan = generatePlan(remaining, semesters, state.selectedModel);
-    renderPlan(plan);
-  }
+  const plan =
+    remaining.length === 0
+      ? {
+          assignments: semesters.map((sem, index) => ({
+            index,
+            sem,
+            cap: getCap(index, sem.flag, semesters.length, state.selectedModel),
+            items: [],
+            total: 0,
+          })),
+          unscheduled: [],
+        }
+      : generatePlan(remaining, semesters, state.selectedModel);
 
+  renderPlanTimeline(plan);
   showScreen('plan');
 }
+
+document.getElementById('plan-scroll-left').addEventListener('click', () => {
+  planScroller.scrollBy({ left: -292, behavior: 'smooth' });
+});
+document.getElementById('plan-scroll-right').addEventListener('click', () => {
+  planScroller.scrollBy({ left: 292, behavior: 'smooth' });
+});
+planScroller.addEventListener(
+  'wheel',
+  (event) => {
+    if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+      planScroller.scrollLeft += event.deltaY;
+    }
+  },
+  { passive: true }
+);
+document.getElementById('replay-btn').addEventListener('click', () => {
+  planScroller.scrollTo({ left: 0, behavior: 'auto' });
+  replayCurrentPlan();
+});
 
 // --- Start / reset ---
 document.getElementById('start-btn').addEventListener('click', () => {
