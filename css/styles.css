@@ -563,4 +563,13 @@ footer p {
   h1 {
     font-size: 1.6rem;
   }
+
+  .wizard-card {
+    padding: 1.5rem 1.25rem;
+  }
+
+  .semester-band.current {
+    margin: 0 -1rem;
+    padding: 1rem;
+  }
 }
